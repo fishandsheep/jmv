@@ -2,6 +2,9 @@
 
 `okm` is a minimal OpenJDK manager backed by the TUNA Adoptium mirror.
 
+It installs JDK or JRE builds into a local `OKM_HOME`, switches the default runtime, and exposes activated
+Java commands through shims.
+
 ## Installation
 
 ### One-line shell installer
@@ -9,7 +12,7 @@
 After publishing release archives, install the latest binary with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/main/install.sh | sh -s -- <owner>/<repo>
+curl -fsSL https://raw.githubusercontent.com/fishandsheep/okm/main/install.sh | sh -s -- fishandsheep/okm
 ```
 
 The installer downloads the matching `okm_<os>_<arch>.tar.gz` release, installs `okm` to
@@ -19,13 +22,13 @@ configuration when possible.
 Customize the install location or version:
 
 ```bash
-OKM_VERSION=v0.1.0 OKM_INSTALL_DIR="$HOME/bin" sh install.sh <owner>/<repo>
+OKM_VERSION=v0.1.0 OKM_INSTALL_DIR="$HOME/bin" sh install.sh fishandsheep/okm
 ```
 
 Skip shell profile changes:
 
 ```bash
-OKM_NO_MODIFY_PROFILE=1 sh install.sh <owner>/<repo>
+OKM_NO_MODIFY_PROFILE=1 sh install.sh fishandsheep/okm
 ```
 
 ### Manual binary install
@@ -44,7 +47,7 @@ chmod +x "$HOME/.local/bin/okm"
 Install from source with Go 1.22 or newer:
 
 ```bash
-git clone <repository-url>
+git clone git@github.com:fishandsheep/okm.git
 cd okm
 go install ./cmd/okm
 ```
@@ -114,5 +117,18 @@ export PATH="$HOME/.okm/shims:$PATH"
 
 ```bash
 go test ./...
+go build ./cmd/okm
 go run ./cmd/okm list
+sh -n install.sh
 ```
+
+Format Go files before committing:
+
+```bash
+gofmt -w cmd internal
+```
+
+## Continuous Integration
+
+GitHub Actions runs on every push to `main` and on pull requests. The workflow checks Go formatting,
+validates `install.sh` syntax, runs `go test ./...`, and builds the CLI with `go build ./cmd/okm`.
