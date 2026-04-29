@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-repo="${1:-${OKM_REPO:-}}"
-version="${OKM_VERSION:-latest}"
+repo="${1:-${OKM_REPO:-fishandsheep/okm}}"
+version="${OKM_VERSION:-0.0.1-beta}"
 install_dir="${OKM_INSTALL_DIR:-$HOME/.local/bin}"
 okm_home="${OKM_HOME:-$HOME/.okm}"
 mirror="${OKM_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/Adoptium}"
@@ -77,8 +77,6 @@ fish_add_path \"\$OKM_HOME/shims\"
 	[ -d "$HOME/.config/fish" ] && append_if_missing "$HOME/.config/fish/conf.d/okm.fish" "$fish_block" "# okm"
 }
 
-[ -n "$repo" ] || die "set OKM_REPO=owner/repo or pass owner/repo as the first argument"
-
 need uname
 need tar
 need mkdir
@@ -88,12 +86,7 @@ os="$(detect_os)"
 arch="$(detect_arch)"
 tmp_dir="$(mktemp -d)"
 archive="$tmp_dir/okm.tar.gz"
-
-if [ "$version" = "latest" ]; then
-	url="https://github.com/$repo/releases/latest/download/okm_${os}_${arch}.tar.gz"
-else
-	url="https://github.com/$repo/releases/download/$version/okm_${os}_${arch}.tar.gz"
-fi
+url="https://github.com/$repo/releases/download/$version/okm_${os}_${arch}.tar.gz"
 
 printf 'Downloading %s\n' "$url"
 download "$url" "$archive"
