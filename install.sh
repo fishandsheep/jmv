@@ -2,7 +2,7 @@
 set -eu
 
 repo="${1:-${OKM_REPO:-fishandsheep/okm}}"
-version="${OKM_VERSION:-0.0.1-beta}"
+version="${OKM_VERSION:-0.0.2-beta}"
 install_dir="${OKM_INSTALL_DIR:-$HOME/.local/bin}"
 okm_home="${OKM_HOME:-$HOME/.okm}"
 mirror="${OKM_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/Adoptium}"

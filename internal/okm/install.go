@@ -62,6 +62,7 @@ func download(ctx context.Context, url, path string) error {
 	if err != nil {
 		return err
 	}
+	setRequestHeaders(req)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
@@ -87,6 +88,11 @@ func download(ctx context.Context, url, path string) error {
 		return closeErr
 	}
 	return os.Rename(tmp, path)
+}
+
+func setRequestHeaders(req *http.Request) {
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "*/*")
 }
 
 func uninstall(cfg Config, rt Runtime, major string, out io.Writer) error {

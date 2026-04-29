@@ -10,18 +10,23 @@ import (
 func TestMirrorListJDKAndJRE(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/Adoptium/", func(w http.ResponseWriter, r *http.Request) {
+		requireDownloadHeaders(t, w, r)
 		w.Write([]byte(`<a href="8/">8/</a><a href="17/">17/</a>`))
 	})
 	mux.HandleFunc("/Adoptium/8/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
+		requireDownloadHeaders(t, w, r)
 		w.Write([]byte(`<a href="OpenJDK8U-jdk_x64_linux_hotspot_8u482b08.tar.gz">jdk</a>`))
 	})
 	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
+		requireDownloadHeaders(t, w, r)
 		w.Write([]byte(`<a href="OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz">jdk</a>`))
 	})
 	mux.HandleFunc("/Adoptium/8/jre/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
+		requireDownloadHeaders(t, w, r)
 		w.Write([]byte(`<a href="OpenJDK8U-jre_x64_linux_hotspot_8u482b08.tar.gz">jre</a>`))
 	})
 	mux.HandleFunc("/Adoptium/17/jre/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
+		requireDownloadHeaders(t, w, r)
 		w.Write([]byte(`<a href="OpenJDK17U-jre_x64_linux_hotspot_17.0.19_10.tar.gz">jre</a>`))
 	})
 	server := httptest.NewServer(mux)
@@ -69,5 +74,12 @@ func TestMirrorIgnoresMacPkg(t *testing.T) {
 	}
 	if release.FileName != "OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.10_7.tar.gz" {
 		t.Fatalf("unexpected filename: %s", release.FileName)
+	}
+}
+
+func requireDownloadHeaders(t *testing.T, w http.ResponseWriter, r *http.Request) {
+	t.Helper()
+	if r.Header.Get("User-Agent") != userAgent || r.Header.Get("Accept") != "*/*" {
+		http.Error(w, "forbidden", http.StatusForbidden)
 	}
 }

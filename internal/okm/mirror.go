@@ -12,6 +12,8 @@ import (
 
 var hrefPattern = regexp.MustCompile(`href="([^"]+)"`)
 
+const userAgent = "okm"
+
 type MirrorClient struct {
 	BaseURL string
 	HTTP    *http.Client
@@ -118,6 +120,7 @@ func (m MirrorClient) getText(ctx context.Context, url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	setRequestHeaders(req)
 	resp, err := m.HTTP.Do(req)
 	if err != nil {
 		return "", err

@@ -20,6 +20,10 @@ func TestInstallActivateCurrentHomeAndUninstall(t *testing.T) {
 		w.Write([]byte(`<a href="OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz">jdk</a>`))
 	})
 	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("User-Agent") != userAgent || r.Header.Get("Accept") != "*/*" {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
 		w.Write(archive)
 	})
 	server := httptest.NewServer(mux)
