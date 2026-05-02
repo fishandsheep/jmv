@@ -79,6 +79,63 @@ func TestInstallActivateCurrentHomeAndUninstall(t *testing.T) {
 	}
 }
 
+func TestInstallShowsInstalledAndUseIsTemporary(t *testing.T) {
+	archive := tinyJDKArchive(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<a href="OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz">jdk</a>`))
+	})
+	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz", func(w http.ResponseWriter, r *http.Request) {
+		w.Write(archive)
+	})
+	mux.HandleFunc("/Adoptium/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<a href="17/">17/</a>`))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	home := t.TempDir()
+	cfg := Config{Home: home, Mirror: server.URL + "/Adoptium"}
+
+	var out bytes.Buffer
+	if err := install(context.Background(), cfg, RuntimeJDK, "17", &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "[1/3] Downloading archive") || !strings.Contains(out.String(), "[2/3] Extracting archive") || !strings.Contains(out.String(), "[3/3] Finalizing configuration") {
+		t.Fatalf("missing progress output: %s", out.String())
+	}
+	if _, err := os.Stat(filepath.Join(home, "downloads", "OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz")); !os.IsNotExist(err) {
+		t.Fatalf("archive should be cleaned up, err=%v", err)
+	}
+
+	out.Reset()
+	if err := install(context.Background(), cfg, RuntimeJDK, "17", &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "already installed") {
+		t.Fatalf("expected already installed message, got: %s", out.String())
+	}
+
+	out.Reset()
+	if err := list(context.Background(), cfg, RuntimeJDK, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "(installed)") {
+		t.Fatalf("expected installed marker in list output: %s", out.String())
+	}
+
+	out.Reset()
+	if err := activateUse(cfg, RuntimeJDK, "17", &out); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(home, "current.json")); !os.IsNotExist(err) {
+		t.Fatalf("okm use must not persist current.json, err=%v", err)
+	}
+	if !strings.Contains(out.String(), "export JAVA_HOME=") {
+		t.Fatalf("expected shell export output: %s", out.String())
+	}
+}
+
 func tinyJDKArchive(t *testing.T) []byte {
 	t.Helper()
 	var buf bytes.Buffer
