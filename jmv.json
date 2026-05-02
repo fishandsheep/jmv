@@ -1,0 +1,30 @@
+{
+  "version": "0.1.0",
+  "description": "A minimal OpenJDK manager backed by the TUNA Adoptium mirror.",
+  "homepage": "https://github.com/fishandsheep/jmv",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/fishandsheep/jmv/releases/download/v0.1.0/jmv_windows_amd64.tar.gz",
+      "hash": "REPLACE_WITH_SHA256_AMD64"
+    },
+    "arm64": {
+      "url": "https://github.com/fishandsheep/jmv/releases/download/v0.1.0/jmv_windows_arm64.tar.gz",
+      "hash": "REPLACE_WITH_SHA256_ARM64"
+    }
+  },
+  "bin": "jmv.exe",
+  "checkver": {
+    "github": "fishandsheep/jmv"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/fishandsheep/jmv/releases/download/v$version/jmv_windows_amd64.tar.gz"
+      },
+      "arm64": {
+        "url": "https://github.com/fishandsheep/jmv/releases/download/v$version/jmv_windows_arm64.tar.gz"
+      }
+    }
+  }
+}
