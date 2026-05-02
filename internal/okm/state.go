@@ -51,6 +51,33 @@ func clearCurrent(home string) error {
 	return err
 }
 
+func writeSession(home string, cur Current) error {
+	return writeJSON(sessionPath(home), cur)
+}
+
+func readSession(home string) (Current, error) {
+	var cur Current
+	if err := readJSON(sessionPath(home), &cur); err != nil {
+		return Current{}, err
+	}
+	return cur, nil
+}
+
+func clearSession(home string) error {
+	err := os.Remove(sessionPath(home))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
+func resolveCurrent(home string) (Current, error) {
+	if cur, err := readSession(home); err == nil {
+		return cur, nil
+	}
+	return readCurrent(home)
+}
+
 func writeJSON(path string, v any) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err

@@ -12,12 +12,12 @@ Java commands through shims.
 After publishing release archives, install the latest binary with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fishandsheep/okm/main/install.sh | sh -s -- fishandsheep/okm
+curl -fsSL https://raw.githubusercontent.com/fishandsheep/okm/main/install.sh | sh 
 ```
 
 The installer downloads the matching `okm_<os>_<arch>.tar.gz` release, installs `okm` to
-`$HOME/.local/bin`, creates `$HOME/.okm`, and adds `okm` environment variables to Bash, Zsh, or Fish
-configuration when possible.
+`$HOME/.local/bin`, creates `$HOME/.okm`, and automatically adds the required environment
+variables to your shell profile (Bash, Zsh, or Fish).
 
 Customize the install location or version:
 
@@ -68,6 +68,7 @@ Bash or Zsh:
 export OKM_HOME="$HOME/.okm"
 export OKM_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
 export PATH="$HOME/.local/bin:$OKM_HOME/shims:$PATH"
+rm -f "$OKM_HOME/session.json"
 ```
 
 Fish:
@@ -77,6 +78,7 @@ set -gx OKM_HOME "$HOME/.okm"
 set -gx OKM_MIRROR "https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
 fish_add_path "$HOME/.local/bin"
 fish_add_path "$OKM_HOME/shims"
+rm -f "$OKM_HOME/session.json"
 ```
 
 Verify the installation:
@@ -88,30 +90,24 @@ okm list
 ## Commands
 
 ```bash
-okm list
-okm list --runtime jre
-okm install 17
-okm install --runtime jre 17
-okm default 17
-okm current
-okm home 17
-okm uninstall 17
+  list      or ls             [-r|--runtime [jdk]]
+  install   or i              [-r|--runtime [jdk]] <major>
+  uninstall or rm             [-r|--runtime [jdk]] <major>
+  use       or u              [-r|--runtime [jdk]] <major>
+  default   or d              [-r|--runtime [jdk]] <major>
+  current   or c
+  home      or h              [-r|--runtime [jdk]] <major>
+  version   or v
+  help
 ```
 
 `jdk` is the default runtime. Use `--runtime jre` for JRE operations.
 
-## Configuration
+### `use` vs `default`
 
-```bash
-export OKM_HOME="$HOME/.okm"
-export OKM_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
-```
+- `okm default <major>` — sets the persistent default. All new terminal sessions will use this version.
+- `okm use <major>` — switches the active version for the current session only. Opening a new terminal will still use the previous default.
 
-After activating a version, add the shim directory to `PATH`:
-
-```bash
-export PATH="$HOME/.okm/shims:$PATH"
-```
 
 ## Development
 

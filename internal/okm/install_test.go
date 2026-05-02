@@ -48,7 +48,7 @@ func TestInstallActivateCurrentHomeAndUninstall(t *testing.T) {
 	}
 
 	out.Reset()
-	if err := activate(cfg, RuntimeJDK, "17", &out); err != nil {
+	if err := activateDefault(cfg, RuntimeJDK, "17", &out); err != nil {
 		t.Fatal(err)
 	}
 	cur, err := readCurrent(home)
@@ -79,7 +79,7 @@ func TestInstallActivateCurrentHomeAndUninstall(t *testing.T) {
 	}
 }
 
-func TestInstallShowsInstalledAndUseSetsDefaultWithoutShellExports(t *testing.T) {
+func TestInstallShowsInstalledAndUseSetsSessionOverride(t *testing.T) {
 	archive := tinyJDKArchive(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
@@ -128,11 +128,14 @@ func TestInstallShowsInstalledAndUseSetsDefaultWithoutShellExports(t *testing.T)
 	if err := activateUse(cfg, RuntimeJDK, "17", &out); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(home, "current.json")); err != nil {
-		t.Fatalf("okm use should persist current.json through default activation, err=%v", err)
+	if _, err := os.Stat(filepath.Join(home, "session.json")); err != nil {
+		t.Fatalf("okm use should create session.json, err=%v", err)
 	}
-	if strings.Contains(out.String(), "export JAVA_HOME=") || strings.Contains(out.String(), "export PATH=") {
-		t.Fatalf("did not expect shell export output: %s", out.String())
+	if _, err := os.Stat(filepath.Join(home, "current.json")); !os.IsNotExist(err) {
+		t.Fatalf("okm use should NOT create current.json")
+	}
+	if !strings.Contains(out.String(), "session") {
+		t.Fatalf("expected session indicator in use output: %s", out.String())
 	}
 }
 

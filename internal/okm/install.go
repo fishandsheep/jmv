@@ -190,6 +190,9 @@ func activateDefault(cfg Config, rt Runtime, major string, out io.Writer) error 
 	if err := writeCurrent(cfg.Home, cur); err != nil {
 		return err
 	}
+	if err := clearSession(cfg.Home); err != nil {
+		return err
+	}
 	if err := refreshShims(cfg.Home); err != nil {
 		return err
 	}
@@ -197,17 +200,22 @@ func activateDefault(cfg Config, rt Runtime, major string, out io.Writer) error 
 	return nil
 }
 
-func activate(cfg Config, rt Runtime, major string, out io.Writer) error {
-	return activateDefault(cfg, rt, major, out)
-}
-
 func activateUse(cfg Config, rt Runtime, major string, out io.Writer) error {
-	if _, err := readMetadata(cfg.Home, rt, major); err != nil {
+	meta, err := readMetadata(cfg.Home, rt, major)
+	if err != nil {
 		return errf("%s %s is not installed", rt, major)
 	}
-	if err := activateDefault(cfg, rt, major, out); err != nil {
+	cur := Current{Runtime: rt, Major: major, Home: meta.Home}
+	if err := writeSession(cfg.Home, cur); err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "Using shims from configured OKM_HOME; no extra JAVA_HOME/PATH export is required.")
+	if err := refreshShims(cfg.Home); err != nil {
+		return err
+	}
+	var defaultNote string
+	if def, err := readCurrent(cfg.Home); err == nil {
+		defaultNote = fmt.Sprintf(" (default: %s %s)", def.Runtime, def.Major)
+	}
+	fmt.Fprintf(out, "Now using %s %s in this session%s\n", rt, major, defaultNote)
 	return nil
 }

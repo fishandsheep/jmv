@@ -35,7 +35,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return err
 		}
 		if len(rest) != 0 {
-			return usage("okm list [--runtime jre]")
+			return usage("okm list [--runtime jdk|jre]")
 		}
 		return list(ctx, cfg, rt, out)
 	case "install", "i":
@@ -44,7 +44,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return err
 		}
 		if len(rest) != 1 {
-			return usage("okm install [--runtime jre] <major>")
+			return usage("okm install [--runtime jdk|jre] <major>")
 		}
 		return install(ctx, cfg, rt, rest[0], out)
 	case "uninstall", "rm":
@@ -53,7 +53,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return err
 		}
 		if len(rest) != 1 {
-			return usage("okm uninstall [--runtime jre] <major>")
+			return usage("okm uninstall [--runtime jdk|jre] <major>")
 		}
 		return uninstall(cfg, rt, rest[0], out)
 	case "default", "d":
@@ -62,7 +62,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return err
 		}
 		if len(rest) != 1 {
-			return usage("okm " + cmd + " [--runtime jre] <major>")
+			return usage("okm " + cmd + " [--runtime jdk|jre] <major>")
 		}
 		return activateDefault(cfg, rt, rest[0], out)
 	case "use", "u":
@@ -71,7 +71,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return err
 		}
 		if len(rest) != 1 {
-			return usage("okm " + cmd + " [--runtime jre] <major>")
+			return usage("okm " + cmd + " [--runtime jdk|jre] <major>")
 		}
 		return activateUse(cfg, rt, rest[0], out)
 	case "current", "c":
@@ -85,7 +85,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return err
 		}
 		if len(rest) != 1 {
-			return usage("okm home [--runtime jre] <major>")
+			return usage("okm home [--runtime jdk|jre] <major>")
 		}
 		return showHome(cfg, rt, rest[0], out)
 	case "shim":
@@ -101,17 +101,17 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 }
 
 func parseRuntime(args []string) (Runtime, []string, error) {
-	rt := RuntimeJRE
+	rt := RuntimeJDK
 	var rest []string
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--runtime", "-r":
 			if i+1 >= len(args) || args[i+1] == "" || args[i+1][0] == '-' {
-				rt = RuntimeJRE
+				rt = RuntimeJDK
 				continue
 			}
 			if args[i+1] != "jdk" && args[i+1] != "jre" {
-				rt = RuntimeJRE
+				rt = RuntimeJDK
 				continue
 			}
 			parsed, err := normalizeRuntime(args[i+1])
@@ -161,7 +161,7 @@ func list(ctx context.Context, cfg Config, rt Runtime, out io.Writer) error {
 }
 
 func showCurrent(cfg Config, out io.Writer) error {
-	cur, err := readCurrent(cfg.Home)
+	cur, err := resolveCurrent(cfg.Home)
 	if err != nil {
 		if os.IsNotExist(err) {
 			fmt.Fprintln(out, "No active Java version.")
@@ -169,7 +169,11 @@ func showCurrent(cfg Config, out io.Writer) error {
 		}
 		return err
 	}
-	fmt.Fprintf(out, "%s %s\n", cur.Runtime, cur.Major)
+	if _, sessErr := readSession(cfg.Home); sessErr == nil {
+		fmt.Fprintf(out, "%s %s (session)\n", cur.Runtime, cur.Major)
+	} else {
+		fmt.Fprintf(out, "%s %s (default)\n", cur.Runtime, cur.Major)
+	}
 	fmt.Fprintf(out, "Home: %s\n", cur.Home)
 	meta, err := readMetadata(cfg.Home, cur.Runtime, cur.Major)
 	if err == nil {
@@ -202,7 +206,7 @@ Commands:
   help
 
 Options:
-  --runtime, -r [jdk|jre]     Defaults to jre.
+  --runtime, -r [jdk|jre]     Defaults to jdk.
 
 Environment:
   OKM_HOME                    Defaults to ~/.okm.
@@ -211,9 +215,9 @@ Environment:
 Examples:
   okm list
   okm install 17
-  okm install -r 17
-  okm install --runtime jdk 17
-  okm default 17`)
+  okm install --runtime jre 17
+  okm default 17
+  okm use 17`)
 }
 
 func usage(s string) error {

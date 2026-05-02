@@ -38,3 +38,7 @@ func downloadsDir(home string) string {
 func shimsDir(home string) string {
 	return filepath.Join(home, "shims")
 }
+
+func sessionPath(home string) string {
+	return filepath.Join(home, "session.json")
+}

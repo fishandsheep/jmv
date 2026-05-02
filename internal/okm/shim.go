@@ -18,7 +18,7 @@ func refreshShims(home string) error {
 		return err
 	}
 
-	cur, err := readCurrent(home)
+	cur, err := resolveCurrent(home)
 	if err != nil {
 		return nil
 	}
@@ -87,7 +87,7 @@ func isExecutable(info fs.FileInfo) bool {
 }
 
 func runShim(home string, exe string, args []string) error {
-	cur, err := readCurrent(home)
+	cur, err := resolveCurrent(home)
 	if err != nil {
 		return errf("no active Java version; run `okm default <major>` first")
 	}
