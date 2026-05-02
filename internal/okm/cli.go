@@ -56,7 +56,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return usage("okm uninstall [--runtime jre] <major>")
 		}
 		return uninstall(cfg, rt, rest[0], out)
-	case "default", "d", "use", "u":
+	case "default", "d":
 		rt, rest, err := parseRuntime(args)
 		if err != nil {
 			return err
@@ -64,7 +64,16 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		if len(rest) != 1 {
 			return usage("okm " + cmd + " [--runtime jre] <major>")
 		}
-		return activate(cfg, rt, rest[0], out)
+		return activateDefault(cfg, rt, rest[0], out)
+	case "use", "u":
+		rt, rest, err := parseRuntime(args)
+		if err != nil {
+			return err
+		}
+		if len(rest) != 1 {
+			return usage("okm " + cmd + " [--runtime jre] <major>")
+		}
+		return activateUse(cfg, rt, rest[0], out)
 	case "current", "c":
 		if len(args) != 0 {
 			return usage("okm current")
@@ -137,7 +146,11 @@ func list(ctx context.Context, cfg Config, rt Runtime, out io.Writer) error {
 	fmt.Fprintf(out, "Available %s versions from %s\n", rt, cfg.Mirror)
 	fmt.Fprintf(out, "Platform: %s/%s\n", platform.Arch, platform.OS)
 	for _, release := range releases {
-		fmt.Fprintf(out, "%s\t%s\n", release.Major, release.FileName)
+		installed := ""
+		if _, err := readMetadata(cfg.Home, rt, release.Major); err == nil {
+			installed = "\t(installed)"
+		}
+		fmt.Fprintf(out, "%s\t%s%s\n", release.Major, release.FileName, installed)
 	}
 	return nil
 }

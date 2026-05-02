@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func install(ctx context.Context, cfg Config, rt Runtime, major string, out io.Writer) error {
@@ -22,15 +23,22 @@ func install(ctx context.Context, cfg Config, rt Runtime, major string, out io.W
 		return err
 	}
 
+	dest := installDir(cfg.Home, rt, major)
+	if _, err := os.Stat(dest); err == nil {
+		fmt.Fprintf(out, "%s %s already installed at %s\n", rt, major, dest)
+		fmt.Fprintln(out, "Run `okm default` to make it the default runtime, or `okm use` for current shell hints.")
+		return nil
+	}
+
 	fmt.Fprintf(out, "Installing %s %s\n", rt, major)
 	fmt.Fprintf(out, "Download URL: %s\n", release.URL)
 
 	archivePath := filepath.Join(downloadsDir(cfg.Home), release.FileName)
-	if err := download(ctx, release.URL, archivePath); err != nil {
+	if err := download(ctx, release.URL, archivePath, out); err != nil {
 		return err
 	}
 
-	dest := installDir(cfg.Home, rt, major)
+	fmt.Fprintln(out, "[2/3] Extracting archive...")
 	tmpDest := dest + ".tmp"
 	_ = os.RemoveAll(tmpDest)
 	if err := os.MkdirAll(tmpDest, 0o755); err != nil {
@@ -46,15 +54,19 @@ func install(ctx context.Context, cfg Config, rt Runtime, major string, out io.W
 		return err
 	}
 
+	fmt.Fprintln(out, "[3/3] Finalizing configuration...")
 	if err := writeMetadata(cfg.Home, release, dest); err != nil {
 		return err
 	}
+	if err := os.Remove(archivePath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
 	fmt.Fprintf(out, "Installed %s %s at %s\n", rt, major, dest)
-	fmt.Fprintln(out, "Run `okm default` to activate this version.")
+	fmt.Fprintln(out, "Run `okm default` to make this version the default runtime.")
 	return nil
 }
 
-func download(ctx context.Context, url, path string) error {
+func download(ctx context.Context, url, path string, out io.Writer) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -77,7 +89,8 @@ func download(ctx context.Context, url, path string) error {
 	if err != nil {
 		return err
 	}
-	_, copyErr := io.Copy(f, resp.Body)
+	fmt.Fprintln(out, "[1/3] Downloading archive...")
+	copyErr := copyWithProgress(f, resp.Body, resp.ContentLength, out)
 	closeErr := f.Close()
 	if copyErr != nil {
 		_ = os.Remove(tmp)
@@ -88,6 +101,51 @@ func download(ctx context.Context, url, path string) error {
 		return closeErr
 	}
 	return os.Rename(tmp, path)
+}
+
+func copyWithProgress(dst io.Writer, src io.Reader, total int64, out io.Writer) error {
+	buf := make([]byte, 32*1024)
+	var downloaded int64
+	var lastPercent int64 = -1
+	for {
+		n, err := src.Read(buf)
+		if n > 0 {
+			if _, werr := dst.Write(buf[:n]); werr != nil {
+				return werr
+			}
+			downloaded += int64(n)
+			if total > 0 {
+				percent := downloaded * 100 / total
+				if percent != lastPercent && (percent%5 == 0 || percent == 100) {
+					fmt.Fprintf(out, "  Download progress: %d%%\n", percent)
+					lastPercent = percent
+				}
+			}
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if total <= 0 {
+		fmt.Fprintf(out, "  Downloaded %s\n", strings.TrimSpace(byteCount(downloaded)))
+	}
+	return nil
+}
+
+func byteCount(n int64) string {
+	const unit = 1024
+	if n < unit {
+		return fmt.Sprintf("%d B", n)
+	}
+	div, exp := int64(unit), 0
+	for nn := n / unit; nn >= unit; nn /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %ciB", float64(n)/float64(div), "KMGTPE"[exp])
 }
 
 func setRequestHeaders(req *http.Request) {
@@ -116,7 +174,7 @@ func uninstall(cfg Config, rt Runtime, major string, out io.Writer) error {
 	return nil
 }
 
-func activate(cfg Config, rt Runtime, major string, out io.Writer) error {
+func activateDefault(cfg Config, rt Runtime, major string, out io.Writer) error {
 	meta, err := readMetadata(cfg.Home, rt, major)
 	if err != nil {
 		return errf("%s %s is not installed", rt, major)
@@ -128,7 +186,21 @@ func activate(cfg Config, rt Runtime, major string, out io.Writer) error {
 	if err := refreshShims(cfg.Home); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "Using %s %s at %s\n", rt, major, meta.Home)
-	fmt.Fprintf(out, "Add %s to PATH to use okm-managed Java commands.\n", shimsDir(cfg.Home))
+	fmt.Fprintf(out, "Default %s set to %s (%s)\n", rt, major, meta.Home)
+	return nil
+}
+
+func activate(cfg Config, rt Runtime, major string, out io.Writer) error {
+	return activateDefault(cfg, rt, major, out)
+}
+
+func activateUse(cfg Config, rt Runtime, major string, out io.Writer) error {
+	meta, err := readMetadata(cfg.Home, rt, major)
+	if err != nil {
+		return errf("%s %s is not installed", rt, major)
+	}
+	fmt.Fprintf(out, "Using %s %s for current shell session\n", rt, major)
+	fmt.Fprintf(out, "export JAVA_HOME=%s\n", shellQuote(meta.Home))
+	fmt.Fprintln(out, "export PATH=\"$JAVA_HOME/bin:$PATH\"")
 	return nil
 }
