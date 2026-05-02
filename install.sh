@@ -2,7 +2,7 @@
 set -eu
 
 repo="${1:-${OKM_REPO:-fishandsheep/okm}}"
-version="${OKM_VERSION:-0.0.2-beta}"
+version="${OKM_VERSION:-latest}"
 install_dir="${OKM_INSTALL_DIR:-$HOME/.local/bin}"
 okm_home="${OKM_HOME:-$HOME/.okm}"
 mirror="${OKM_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/Adoptium}"
@@ -14,6 +14,32 @@ die() {
 
 need() {
 	command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+print_logo() {
+	cat <<'LOGO'
+          _____                    _____                    _____          
+         /\    \                  /\    \                  /\    \         
+        /::\    \                /::\____\                /::\____\        
+        \:::\    \              /::::|   |               /:::/    /        
+         \:::\    \            /:::::|   |              /:::/    /         
+          \:::\    \          /::::::|   |             /:::/    /          
+           \:::\    \        /:::/|::|   |            /:::/____/           
+           /::::\    \      /:::/ |::|   |            |::|    |            
+  _____   /::::::\    \    /:::/  |::|___|______      |::|    |     _____  
+ /\    \ /:::/\:::\    \  /:::/   |::::::::\    \     |::|    |    /\    \ 
+/::\    /:::/  \:::\____\/:::/    |:::::::::\____\    |::|    |   /::\____\
+\:::\  /:::/    \::/    /\::/    / ~~~~~/:::/    /    |::|    |  /:::/    /
+ \:::\/:::/    / \/____/  \/____/      /:::/    /     |::|    | /:::/    / 
+  \::::::/    /                       /:::/    /      |::|____|/:::/    /  
+   \::::/    /                       /:::/    /       |:::::::::::/    /   
+    \::/    /                       /:::/    /        \::::::::::/____/    
+     \/____/                       /:::/    /          ~~~~~~~~~~          
+                                  /:::/    /                               
+                                 /:::/    /                                
+                                 \::/    /                                 
+                                  \/____/                                  
+LOGO
 }
 
 detect_os() {
@@ -32,49 +58,59 @@ detect_arch() {
 	esac
 }
 
+resolve_version() {
+	if [ "$version" != "latest" ]; then
+		printf '%s' "$version"
+		return 0
+	fi
+
+	api_url="https://api.github.com/repos/$repo/releases/latest"
+	if command -v curl >/dev/null 2>&1; then
+		resolved="$(curl -sSL -H 'Accept: application/vnd.github+json' -H 'User-Agent: okm-installer' "$api_url" | sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+	elif command -v wget >/dev/null 2>&1; then
+		resolved="$(wget -qO- --header='Accept: application/vnd.github+json' --user-agent='okm-installer' "$api_url" | sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+	else
+		die "missing required command: curl or wget"
+	fi
+
+	[ -n "$resolved" ] || die "failed to resolve latest release version"
+	printf '%s' "$resolved"
+}
+
 download() {
 	url="$1"
 	out="$2"
 	if command -v curl >/dev/null 2>&1; then
-		curl -fsSL "$url" -o "$out"
+		curl -A "okm-installer" -fL# "$url" -o "$out"
 	elif command -v wget >/dev/null 2>&1; then
-		wget -qO "$out" "$url"
+		wget --progress=bar:force:noscroll -O "$out" "$url"
 	else
 		die "missing required command: curl or wget"
 	fi
 }
 
-append_if_missing() {
-	file="$1"
-	text="$2"
-	marker="$3"
-	mkdir -p "$(dirname "$file")"
-	touch "$file"
-	if ! grep -q "$marker" "$file"; then
-		printf '\n%s\n' "$text" >>"$file"
-		printf 'Updated %s\n' "$file"
-	fi
-}
-
-configure_shells() {
-	[ "${OKM_NO_MODIFY_PROFILE:-}" = "1" ] && return 0
-
-	sh_block="# okm
-export OKM_HOME=\"$okm_home\"
-export OKM_MIRROR=\"$mirror\"
-export PATH=\"$install_dir:\$OKM_HOME/shims:\$PATH\"
-# okm end"
-
-	fish_block="# okm
-set -gx OKM_HOME \"$okm_home\"
-set -gx OKM_MIRROR \"$mirror\"
-fish_add_path \"$install_dir\"
-fish_add_path \"\$OKM_HOME/shims\"
-# okm end"
-
-	[ -n "${BASH_VERSION:-}" ] && append_if_missing "$HOME/.bashrc" "$sh_block" "# okm"
-	[ -n "${ZSH_VERSION:-}" ] && append_if_missing "$HOME/.zshrc" "$sh_block" "# okm"
-	[ -d "$HOME/.config/fish" ] && append_if_missing "$HOME/.config/fish/conf.d/okm.fish" "$fish_block" "# okm"
+print_shell_examples() {
+	printf '\nAdd the following to your shell profile manually:\n\n'
+	printf 'For bash (append to ~/.bashrc):\n'
+	cat <<EOF_BASH
+export OKM_HOME="$okm_home"
+export OKM_MIRROR="$mirror"
+export PATH="$install_dir:\$OKM_HOME/shims:\$PATH"
+EOF_BASH
+	printf '\nFor zsh (append to ~/.zshrc):\n'
+	cat <<EOF_ZSH
+export OKM_HOME="$okm_home"
+export OKM_MIRROR="$mirror"
+export PATH="$install_dir:\$OKM_HOME/shims:\$PATH"
+EOF_ZSH
+	printf '\nFor fish (create config manually):\n'
+	printf 'mkdir -p ~/.config/fish && cat <<\"EOF\" >> ~/.config/fish/config.fish\n'
+	cat <<EOF_FISH
+set -gx OKM_HOME "$okm_home"
+set -gx OKM_MIRROR "$mirror"
+fish_add_path "$install_dir" "$okm_home/shims"
+EOF_FISH
+	printf 'EOF\n'
 }
 
 need uname
@@ -82,11 +118,14 @@ need tar
 need mkdir
 need chmod
 
+print_logo
+
 os="$(detect_os)"
 arch="$(detect_arch)"
+resolved_version="$(resolve_version)"
 tmp_dir="$(mktemp -d)"
 archive="$tmp_dir/okm.tar.gz"
-url="https://github.com/$repo/releases/download/$version/okm_${os}_${arch}.tar.gz"
+url="https://github.com/$repo/releases/download/$resolved_version/okm_${os}_${arch}.tar.gz"
 
 printf 'Downloading %s\n' "$url"
 download "$url" "$archive"
@@ -97,7 +136,5 @@ tar -xzf "$archive" -C "$tmp_dir"
 cp "$tmp_dir/okm" "$install_dir/okm"
 chmod +x "$install_dir/okm"
 
-configure_shells
-
-printf 'okm installed to %s/okm\n' "$install_dir"
-printf 'Restart your shell or run: export PATH="%s:%s/shims:$PATH"\n' "$install_dir" "$okm_home"
+printf '\nokm installed to %s/okm\n' "$install_dir"
+print_shell_examples
