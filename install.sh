@@ -64,16 +64,48 @@ resolve_version() {
 		return 0
 	fi
 
+	resolved=""
 	if command -v curl >/dev/null 2>&1; then
-		latest_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' "https://github.com/$repo/releases/latest")"
+		resolved="$(
+			curl -fsSL \
+				-H "Accept: application/vnd.github+json" \
+				-H "User-Agent: okm-install-script" \
+				"https://api.github.com/repos/$repo/releases/latest" \
+				| sed -n 's/^[[:space:]]*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+				| head -n1
+		)" || true
+		if [ -z "$resolved" ]; then
+			resolved="$(
+				curl -fsSI -o - \
+					-H "User-Agent: okm-install-script" \
+					"https://github.com/$repo/releases/latest" \
+					| sed -n 's#^[Ll]ocation: .*/releases/tag/\([^/[:space:]]*\).*#\1#p' \
+					| tail -n1
+			)" || true
+		fi
 	elif command -v wget >/dev/null 2>&1; then
-		latest_url="$(wget -qO- --max-redirect=0 "https://github.com/$repo/releases/latest" 2>&1 | sed -n 's#^  Location: .*releases/tag/\([^[:space:]]*\).*#\1#p' | tail -n1)"
-		[ -n "$latest_url" ] && latest_url="https://github.com/$repo/releases/tag/$latest_url"
+		resolved="$(
+			wget -qO- \
+				--header="Accept: application/vnd.github+json" \
+				--header="User-Agent: okm-install-script" \
+				"https://api.github.com/repos/$repo/releases/latest" \
+				| sed -n 's/^[[:space:]]*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+				| head -n1
+		)" || true
+		if [ -z "$resolved" ]; then
+			resolved="$(
+				wget -S --spider -O /dev/null \
+					--max-redirect=0 \
+					--header="User-Agent: okm-install-script" \
+					"https://github.com/$repo/releases/latest" 2>&1 \
+					| sed -n 's#^  Location: .*/releases/tag/\([^/[:space:]]*\).*#\1#p' \
+					| tail -n1
+			)" || true
+		fi
 	else
 		die "missing required command: curl or wget"
 	fi
 
-	resolved="${latest_url##*/}"
 	[ -n "$resolved" ] || die "failed to resolve latest release version"
 	printf '%s' "$resolved"
 }
