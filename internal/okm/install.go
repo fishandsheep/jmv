@@ -26,7 +26,7 @@ func install(ctx context.Context, cfg Config, rt Runtime, major string, out io.W
 	dest := installDir(cfg.Home, rt, major)
 	if _, err := os.Stat(dest); err == nil {
 		fmt.Fprintf(out, "%s %s already installed at %s\n", rt, major, dest)
-		fmt.Fprintln(out, "Run `okm default` to make it the default runtime, or `okm use` for current shell hints.")
+		fmt.Fprintln(out, "Run `okm default` to switch shims to this runtime.")
 		return nil
 	}
 
@@ -62,7 +62,7 @@ func install(ctx context.Context, cfg Config, rt Runtime, major string, out io.W
 		return err
 	}
 	fmt.Fprintf(out, "Installed %s %s at %s\n", rt, major, dest)
-	fmt.Fprintln(out, "Run `okm default` to make this version the default runtime.")
+	fmt.Fprintln(out, "Run `okm default` to switch shims to this runtime.")
 	return nil
 }
 
@@ -116,8 +116,15 @@ func copyWithProgress(dst io.Writer, src io.Reader, total int64, out io.Writer) 
 			downloaded += int64(n)
 			if total > 0 {
 				percent := downloaded * 100 / total
-				if percent != lastPercent && (percent%5 == 0 || percent == 100) {
-					fmt.Fprintf(out, "  Download progress: %d%%\n", percent)
+				if percent != lastPercent {
+					hashes := int(percent / 5)
+					if hashes > 20 {
+						hashes = 20
+					}
+					fmt.Fprintf(out, "\r  Download progress: %-20s %3d%%", strings.Repeat("#", hashes), percent)
+					if percent == 100 {
+						fmt.Fprintln(out)
+					}
 					lastPercent = percent
 				}
 			}
@@ -195,12 +202,12 @@ func activate(cfg Config, rt Runtime, major string, out io.Writer) error {
 }
 
 func activateUse(cfg Config, rt Runtime, major string, out io.Writer) error {
-	meta, err := readMetadata(cfg.Home, rt, major)
-	if err != nil {
+	if _, err := readMetadata(cfg.Home, rt, major); err != nil {
 		return errf("%s %s is not installed", rt, major)
 	}
-	fmt.Fprintf(out, "Using %s %s for current shell session\n", rt, major)
-	fmt.Fprintf(out, "export JAVA_HOME=%s\n", shellQuote(meta.Home))
-	fmt.Fprintln(out, "export PATH=\"$JAVA_HOME/bin:$PATH\"")
+	if err := activateDefault(cfg, rt, major, out); err != nil {
+		return err
+	}
+	fmt.Fprintln(out, "Using shims from configured OKM_HOME; no extra JAVA_HOME/PATH export is required.")
 	return nil
 }
