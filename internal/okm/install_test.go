@@ -79,7 +79,7 @@ func TestInstallActivateCurrentHomeAndUninstall(t *testing.T) {
 	}
 }
 
-func TestInstallShowsInstalledAndUseIsTemporary(t *testing.T) {
+func TestInstallShowsInstalledAndUseSetsDefaultWithoutShellExports(t *testing.T) {
 	archive := tinyJDKArchive(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
@@ -128,11 +128,26 @@ func TestInstallShowsInstalledAndUseIsTemporary(t *testing.T) {
 	if err := activateUse(cfg, RuntimeJDK, "17", &out); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(home, "current.json")); !os.IsNotExist(err) {
-		t.Fatalf("okm use must not persist current.json, err=%v", err)
+	if _, err := os.Stat(filepath.Join(home, "current.json")); err != nil {
+		t.Fatalf("okm use should persist current.json through default activation, err=%v", err)
 	}
-	if !strings.Contains(out.String(), "export JAVA_HOME=") {
-		t.Fatalf("expected shell export output: %s", out.String())
+	if strings.Contains(out.String(), "export JAVA_HOME=") || strings.Contains(out.String(), "export PATH=") {
+		t.Fatalf("did not expect shell export output: %s", out.String())
+	}
+}
+
+func TestCopyWithProgressSingleLine(t *testing.T) {
+	src := strings.NewReader(strings.Repeat("a", 1024))
+	var downloaded bytes.Buffer
+	var out bytes.Buffer
+	if err := copyWithProgress(&downloaded, src, 1024, &out); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(out.String(), "\n") != 1 {
+		t.Fatalf("expected a single progress line, got output: %q", out.String())
+	}
+	if !strings.Contains(out.String(), "100%") {
+		t.Fatalf("expected 100%% output, got: %q", out.String())
 	}
 }
 

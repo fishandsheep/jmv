@@ -101,13 +101,18 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 }
 
 func parseRuntime(args []string) (Runtime, []string, error) {
-	rt := RuntimeJDK
+	rt := RuntimeJRE
 	var rest []string
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--runtime", "-r":
-			if i+1 >= len(args) {
-				return "", nil, usage("--runtime requires jdk or jre")
+			if i+1 >= len(args) || args[i+1] == "" || args[i+1][0] == '-' {
+				rt = RuntimeJRE
+				continue
+			}
+			if args[i+1] != "jdk" && args[i+1] != "jre" {
+				rt = RuntimeJRE
+				continue
 			}
 			parsed, err := normalizeRuntime(args[i+1])
 			if err != nil {
@@ -186,18 +191,18 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, `Usage: okm <command> [options]
 
 Commands:
-  list      or ls             [--runtime jre]
-  install   or i              [--runtime jre] <major>
-  uninstall or rm             [--runtime jre] <major>
-  use       or u              [--runtime jre] <major>
-  default   or d              [--runtime jre] <major>
+  list      or ls             [-r|--runtime [jdk]]
+  install   or i              [-r|--runtime [jdk]] <major>
+  uninstall or rm             [-r|--runtime [jdk]] <major>
+  use       or u              [-r|--runtime [jdk]] <major>
+  default   or d              [-r|--runtime [jdk]] <major>
   current   or c
-  home      or h              [--runtime jre] <major>
+  home      or h              [-r|--runtime [jdk]] <major>
   version   or v
   help
 
 Options:
-  --runtime, -r jdk|jre       Defaults to jdk.
+  --runtime, -r [jdk|jre]     Defaults to jre.
 
 Environment:
   OKM_HOME                    Defaults to ~/.okm.
@@ -206,7 +211,8 @@ Environment:
 Examples:
   okm list
   okm install 17
-  okm install --runtime jre 17
+  okm install -r 17
+  okm install --runtime jdk 17
   okm default 17`)
 }
 
