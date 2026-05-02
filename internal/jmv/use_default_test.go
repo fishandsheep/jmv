@@ -1,4 +1,4 @@
-package okm
+package jmv
 
 import (
 	"bytes"
@@ -31,7 +31,7 @@ func TestUseVsDefaultDifferentBehavior(t *testing.T) {
 
 	home := t.TempDir()
 	cfg := Config{Home: home, Mirror: server.URL + "/Adoptium"}
-	t.Setenv("OKM_HOME", home)
+	t.Setenv("JMV_HOME", home)
 
 	// Install jdk 17 and jdk 8
 	var out bytes.Buffer
@@ -65,7 +65,7 @@ func TestUseVsDefaultDifferentBehavior(t *testing.T) {
 		t.Fatalf("expected jdk 17, got %s %s", cur.Runtime, cur.Major)
 	}
 
-	// Step 2: okm use 8 (session override)
+	// Step 2: jmv use 8 (session override)
 	out.Reset()
 	if err := activateUse(cfg, RuntimeJDK, "8", &out); err != nil {
 		t.Fatal(err)

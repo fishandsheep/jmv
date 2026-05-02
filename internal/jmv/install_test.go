@@ -1,4 +1,4 @@
-package okm
+package jmv
 
 import (
 	"archive/tar"
@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-func TestInstallActivateCurrentHomeAndUninstall(t *testing.T) {
+func TestInstallActivateCurrentAndUninstall(t *testing.T) {
 	archive := tinyJDKArchive(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
@@ -32,8 +32,8 @@ func TestInstallActivateCurrentHomeAndUninstall(t *testing.T) {
 	home := t.TempDir()
 	cfg := Config{Home: home, Mirror: server.URL + "/Adoptium"}
 
-	t.Setenv("OKM_HOME", home)
-	t.Setenv("OKM_MIRROR", cfg.Mirror)
+	t.Setenv("JMV_HOME", home)
+	t.Setenv("JMV_MIRROR", cfg.Mirror)
 
 	var out bytes.Buffer
 	if err := install(context.Background(), cfg, RuntimeJDK, "17", &out); err != nil {
@@ -60,14 +60,6 @@ func TestInstallActivateCurrentHomeAndUninstall(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(home, "shims", "java")); err != nil {
 		t.Fatalf("expected java shim: %v", err)
-	}
-
-	out.Reset()
-	if err := showHome(cfg, RuntimeJDK, "17", &out); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(out.String(), filepath.Join(home, "installs", "jdk", "17")) {
-		t.Fatalf("unexpected home output: %s", out.String())
 	}
 
 	out.Reset()
@@ -129,10 +121,10 @@ func TestInstallShowsInstalledAndUseSetsSessionOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(home, "session.json")); err != nil {
-		t.Fatalf("okm use should create session.json, err=%v", err)
+		t.Fatalf("jmv use should create session.json, err=%v", err)
 	}
 	if _, err := os.Stat(filepath.Join(home, "current.json")); !os.IsNotExist(err) {
-		t.Fatalf("okm use should NOT create current.json")
+		t.Fatalf("jmv use should NOT create current.json")
 	}
 	if !strings.Contains(out.String(), "session") {
 		t.Fatalf("expected session indicator in use output: %s", out.String())

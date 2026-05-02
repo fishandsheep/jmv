@@ -1,8 +1,8 @@
-# okm
+# jmv
 
-`okm` is a minimal OpenJDK manager backed by the TUNA Adoptium mirror.
+`jmv` is a minimal OpenJDK manager backed by the TUNA Adoptium mirror.
 
-It installs JDK or JRE builds into a local `OKM_HOME`, switches the default runtime, and exposes activated
+It installs JDK or JRE builds into a local `JMV_HOME`, switches the default runtime, and exposes activated
 Java commands through shims.
 
 ## Installation
@@ -12,23 +12,23 @@ Java commands through shims.
 After publishing release archives, install the latest binary with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fishandsheep/okm/main/install.sh | sh 
+curl -fsSL https://raw.githubusercontent.com/fishandsheep/okm/main/install.sh | sh
 ```
 
-The installer downloads the matching `okm_<os>_<arch>.tar.gz` release, installs `okm` to
-`$HOME/.local/bin`, creates `$HOME/.okm`, and automatically adds the required environment
+The installer downloads the matching `jmv_<os>_<arch>.tar.gz` release, installs `jmv` to
+`$HOME/.local/bin`, creates `$HOME/.jmv`, and automatically adds the required environment
 variables to your shell profile (Bash, Zsh, or Fish).
 
 Customize the install location or version:
 
 ```bash
-OKM_VERSION=v0.1.0 OKM_INSTALL_DIR="$HOME/bin" sh install.sh fishandsheep/okm
+JMV_VERSION=v0.1.0 JMV_INSTALL_DIR="$HOME/bin" sh install.sh fishandsheep/okm
 ```
 
 Skip shell profile changes:
 
 ```bash
-OKM_NO_MODIFY_PROFILE=1 sh install.sh fishandsheep/okm
+JMV_NO_MODIFY_PROFILE=1 sh install.sh fishandsheep/okm
 ```
 
 ### Manual binary install
@@ -36,10 +36,10 @@ OKM_NO_MODIFY_PROFILE=1 sh install.sh fishandsheep/okm
 Download the release archive for your platform, then install the binary:
 
 ```bash
-tar -xzf okm_linux_amd64.tar.gz
+tar -xzf jmv_linux_amd64.tar.gz
 mkdir -p "$HOME/.local/bin"
-mv okm "$HOME/.local/bin/okm"
-chmod +x "$HOME/.local/bin/okm"
+mv jmv "$HOME/.local/bin/jmv"
+chmod +x "$HOME/.local/bin/jmv"
 ```
 
 ### Install from source
@@ -49,7 +49,7 @@ Install from source with Go 1.22 or newer:
 ```bash
 git clone git@github.com:fishandsheep/okm.git
 cd okm
-go install ./cmd/okm
+go install ./cmd/jmv
 ```
 
 Make sure Go's binary directory is on your `PATH`:
@@ -60,31 +60,31 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 
 ### Shell environment
 
-`okm` uses `$OKM_HOME` for installed runtimes and `$OKM_HOME/shims` for activated Java commands.
+`jmv` uses `$JMV_HOME` for installed runtimes and `$JMV_HOME/shims` for activated Java commands.
 
 Bash or Zsh:
 
 ```bash
-export OKM_HOME="$HOME/.okm"
-export OKM_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
-export PATH="$HOME/.local/bin:$OKM_HOME/shims:$PATH"
-rm -f "$OKM_HOME/session.json"
+export JMV_HOME="$HOME/.jmv"
+export JMV_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
+export PATH="$HOME/.local/bin:$JMV_HOME/shims:$PATH"
+rm -f "$JMV_HOME/session.json"
 ```
 
 Fish:
 
 ```fish
-set -gx OKM_HOME "$HOME/.okm"
-set -gx OKM_MIRROR "https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
+set -gx JMV_HOME "$HOME/.jmv"
+set -gx JMV_MIRROR "https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
 fish_add_path "$HOME/.local/bin"
-fish_add_path "$OKM_HOME/shims"
-rm -f "$OKM_HOME/session.json"
+fish_add_path "$JMV_HOME/shims"
+rm -f "$JMV_HOME/session.json"
 ```
 
 Verify the installation:
 
 ```bash
-okm list
+jmv list
 ```
 
 ## Commands
@@ -96,25 +96,24 @@ okm list
   use       or u              [-r|--runtime [jdk]] <major>
   default   or d              [-r|--runtime [jdk]] <major>
   current   or c
-  home      or h              [-r|--runtime [jdk]] <major>
   version   or v
-  help
+  help      or h
 ```
 
 `jdk` is the default runtime. Use `--runtime jre` for JRE operations.
 
 ### `use` vs `default`
 
-- `okm default <major>` — sets the persistent default. All new terminal sessions will use this version.
-- `okm use <major>` — switches the active version for the current session only. Opening a new terminal will still use the previous default.
+- `jmv default <major>` — sets the persistent default. All new terminal sessions will use this version.
+- `jmv use <major>` — switches the active version for the current session only. Opening a new terminal will still use the previous default.
 
 
 ## Development
 
 ```bash
 go test ./...
-go build ./cmd/okm
-go run ./cmd/okm list
+go build ./cmd/jmv
+go run ./cmd/jmv list
 sh -n install.sh
 ```
 
@@ -127,4 +126,4 @@ gofmt -w cmd internal
 ## Continuous Integration
 
 GitHub Actions runs on every push to `main` and on pull requests. The workflow checks Go formatting,
-validates `install.sh` syntax, runs `go test ./...`, and builds the CLI with `go build ./cmd/okm`.
+validates `install.sh` syntax, runs `go test ./...`, and builds the CLI with `go build ./cmd/jmv`.

@@ -1,4 +1,4 @@
-package okm
+package jmv
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 var hrefPattern = regexp.MustCompile(`href="([^"]+)"`)
 
-const userAgent = "okm"
+const userAgent = "jmv"
 
 type MirrorClient struct {
 	BaseURL string

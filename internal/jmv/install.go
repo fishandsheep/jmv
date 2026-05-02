@@ -1,4 +1,4 @@
-package okm
+package jmv
 
 import (
 	"context"
@@ -26,7 +26,7 @@ func install(ctx context.Context, cfg Config, rt Runtime, major string, out io.W
 	dest := installDir(cfg.Home, rt, major)
 	if _, err := os.Stat(dest); err == nil {
 		fmt.Fprintf(out, "%s %s already installed at %s\n", rt, major, dest)
-		fmt.Fprintln(out, "Run `okm default` to switch shims to this runtime.")
+		fmt.Fprintln(out, "Run `jmv default` to switch shims to this runtime.")
 		return nil
 	}
 
@@ -62,7 +62,7 @@ func install(ctx context.Context, cfg Config, rt Runtime, major string, out io.W
 		return err
 	}
 	fmt.Fprintf(out, "Installed %s %s at %s\n", rt, major, dest)
-	fmt.Fprintln(out, "Run `okm default` to switch shims to this runtime.")
+	fmt.Fprintln(out, "Run `jmv default` to switch shims to this runtime.")
 	return nil
 }
 

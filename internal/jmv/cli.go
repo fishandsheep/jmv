@@ -1,11 +1,10 @@
-package okm
+package jmv
 
 import (
 	"context"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 )
 
 func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
@@ -23,11 +22,12 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	args = args[1:]
 
 	switch cmd {
-	case "help", "--help", "-h":
+	case "help", "h", "--help", "-h":
 		printHelp(out)
 		return nil
 	case "version", "--version", "-v":
-		fmt.Fprintf(out, "okm %s\n", Version)
+		printLogo(out)
+		fmt.Fprintf(out, "\njmv %s\n", Version)
 		return nil
 	case "list", "ls":
 		rt, rest, err := parseRuntime(args)
@@ -35,7 +35,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return err
 		}
 		if len(rest) != 0 {
-			return usage("okm list [--runtime jdk|jre]")
+			return usage("jmv list [--runtime jdk|jre]")
 		}
 		return list(ctx, cfg, rt, out)
 	case "install", "i":
@@ -44,7 +44,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return err
 		}
 		if len(rest) != 1 {
-			return usage("okm install [--runtime jdk|jre] <major>")
+			return usage("jmv install [--runtime jdk|jre] <major>")
 		}
 		return install(ctx, cfg, rt, rest[0], out)
 	case "uninstall", "rm":
@@ -53,7 +53,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return err
 		}
 		if len(rest) != 1 {
-			return usage("okm uninstall [--runtime jdk|jre] <major>")
+			return usage("jmv uninstall [--runtime jdk|jre] <major>")
 		}
 		return uninstall(cfg, rt, rest[0], out)
 	case "default", "d":
@@ -62,7 +62,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return err
 		}
 		if len(rest) != 1 {
-			return usage("okm " + cmd + " [--runtime jdk|jre] <major>")
+			return usage("jmv " + cmd + " [--runtime jdk|jre] <major>")
 		}
 		return activateDefault(cfg, rt, rest[0], out)
 	case "use", "u":
@@ -71,26 +71,17 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return err
 		}
 		if len(rest) != 1 {
-			return usage("okm " + cmd + " [--runtime jdk|jre] <major>")
+			return usage("jmv " + cmd + " [--runtime jdk|jre] <major>")
 		}
 		return activateUse(cfg, rt, rest[0], out)
 	case "current", "c":
 		if len(args) != 0 {
-			return usage("okm current")
+			return usage("jmv current")
 		}
 		return showCurrent(cfg, out)
-	case "home", "h":
-		rt, rest, err := parseRuntime(args)
-		if err != nil {
-			return err
-		}
-		if len(rest) != 1 {
-			return usage("okm home [--runtime jdk|jre] <major>")
-		}
-		return showHome(cfg, rt, rest[0], out)
 	case "shim":
 		if len(args) < 1 {
-			return usage("okm shim <executable> [args...]")
+			return usage("jmv shim <executable> [args...]")
 		}
 		return runShim(cfg.Home, args[0], args[1:])
 	default:
@@ -182,17 +173,18 @@ func showCurrent(cfg Config, out io.Writer) error {
 	return nil
 }
 
-func showHome(cfg Config, rt Runtime, major string, out io.Writer) error {
-	meta, err := readMetadata(cfg.Home, rt, major)
-	if err != nil {
-		return errf("%s %s is not installed", rt, major)
-	}
-	fmt.Fprintln(out, filepath.Clean(meta.Home))
-	return nil
+func printLogo(out io.Writer) {
+	fmt.Fprintln(out, `    ___  _____ ______   ___      ___
+   |\  \|\   _ \  _   \|\  \    /  /|
+   \ \  \ \  \\\__\ \  \ \  \  /  / /
+ __ \ \  \ \  \\|__| \  \ \  \/  / /
+|\  \\_\  \ \  \    \ \  \ \    / /
+\ \________\ \__\    \ \__\ \__/ /
+ \|________|\|__|     \|__|\|__|/    (JDK/JRE MANAGE VERSION)`)
 }
 
 func printHelp(out io.Writer) {
-	fmt.Fprintln(out, `Usage: okm <command> [options]
+	fmt.Fprintln(out, `Usage: jmv <command> [options]
 
 Commands:
   list      or ls             [-r|--runtime [jdk]]
@@ -201,23 +193,22 @@ Commands:
   use       or u              [-r|--runtime [jdk]] <major>
   default   or d              [-r|--runtime [jdk]] <major>
   current   or c
-  home      or h              [-r|--runtime [jdk]] <major>
   version   or v
-  help
+  help      or h
 
 Options:
   --runtime, -r [jdk|jre]     Defaults to jdk.
 
 Environment:
-  OKM_HOME                    Defaults to ~/.okm.
-  OKM_MIRROR                  Defaults to TUNA Adoptium mirror.
+  JMV_HOME                    Defaults to ~/.jmv.
+  JMV_MIRROR                  Defaults to TUNA Adoptium mirror.
 
 Examples:
-  okm list
-  okm install 17
-  okm install --runtime jre 17
-  okm default 17
-  okm use 17`)
+  jmv list
+  jmv install 17
+  jmv install --runtime jre 17
+  jmv default 17
+  jmv use 17`)
 }
 
 func usage(s string) error {

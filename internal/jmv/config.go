@@ -1,4 +1,4 @@
-package okm
+package jmv
 
 import (
 	"os"
@@ -12,16 +12,16 @@ type Config struct {
 }
 
 func LoadConfig() (Config, error) {
-	home := os.Getenv("OKM_HOME")
+	home := os.Getenv("JMV_HOME")
 	if home == "" {
 		userHome, err := os.UserHomeDir()
 		if err != nil {
 			return Config{}, err
 		}
-		home = filepath.Join(userHome, ".okm")
+		home = filepath.Join(userHome, ".jmv")
 	}
 
-	mirror := os.Getenv("OKM_MIRROR")
+	mirror := os.Getenv("JMV_MIRROR")
 	if mirror == "" {
 		mirror = DefaultMirror
 	}
