@@ -22,13 +22,13 @@ variables to your shell profile (Bash, Zsh, or Fish).
 Customize the install location or version:
 
 ```bash
-JMV_VERSION=v0.1.0 JMV_INSTALL_DIR="$HOME/bin" sh install.sh fishandsheep/okm
+JMV_VERSION=v0.1.0 JMV_INSTALL_DIR="$HOME/bin" sh install.sh fishandsheep/jmv
 ```
 
 Skip shell profile changes:
 
 ```bash
-JMV_NO_MODIFY_PROFILE=1 sh install.sh fishandsheep/okm
+JMV_NO_MODIFY_PROFILE=1 sh install.sh fishandsheep/jmv
 ```
 
 ### Manual binary install
@@ -47,7 +47,7 @@ chmod +x "$HOME/.local/bin/jmv"
 Install from source with Go 1.22 or newer:
 
 ```bash
-git clone git@github.com:fishandsheep/okm.git
+git clone git@github.com:fishandsheep/jmv.git
 cd okm
 go install ./cmd/jmv
 ```

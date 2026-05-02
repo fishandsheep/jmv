@@ -68,6 +68,6 @@ jobs:
           Install latest with:
 
           \`\`\`bash
-          curl -fsSL https://raw.githubusercontent.com/fishandsheep/okm/main/install.sh | sh
+          curl -fsSL https://raw.githubusercontent.com/fishandsheep/jmv/main/install.sh | sh
           \`\`\`" \
             --latest

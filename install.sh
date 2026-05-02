@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-repo="${1:-${JMV_REPO:-fishandsheep/okm}}"
+repo="${1:-${JMV_REPO:-fishandsheep/jmv}}"
 version="${JMV_VERSION:-latest}"
 install_dir="${JMV_INSTALL_DIR:-$HOME/.local/bin}"
 jmv_home="${JMV_HOME:-$HOME/.jmv}"
