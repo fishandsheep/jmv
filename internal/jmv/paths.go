@@ -1,6 +1,7 @@
 package jmv
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -39,6 +40,10 @@ func shimsDir(home string) string {
 	return filepath.Join(home, "shims")
 }
 
-func sessionPath(home string) string {
-	return filepath.Join(home, "session.json")
+func sessionDir(home string) string {
+	return filepath.Join(home, "sessions")
+}
+
+func sessionPathForPID(home string, pid int) string {
+	return filepath.Join(home, "sessions", fmt.Sprintf("%d.json", pid))
 }

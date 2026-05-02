@@ -173,7 +173,7 @@ func uninstall(cfg Config, rt Runtime, major string, out io.Writer) error {
 		if err := clearCurrent(cfg.Home); err != nil {
 			return err
 		}
-		if err := refreshShims(cfg.Home); err != nil {
+		if err := refreshShims(cfg.Home, os.Getppid()); err != nil {
 			return err
 		}
 	}
@@ -190,10 +190,8 @@ func activateDefault(cfg Config, rt Runtime, major string, out io.Writer) error 
 	if err := writeCurrent(cfg.Home, cur); err != nil {
 		return err
 	}
-	if err := clearSession(cfg.Home); err != nil {
-		return err
-	}
-	if err := refreshShims(cfg.Home); err != nil {
+	_ = clearSession(cfg.Home, os.Getppid())
+	if err := refreshShims(cfg.Home, os.Getppid()); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "Default %s set to %s (%s)\n", rt, major, meta.Home)
@@ -206,10 +204,11 @@ func activateUse(cfg Config, rt Runtime, major string, out io.Writer) error {
 		return errf("%s %s is not installed", rt, major)
 	}
 	cur := Current{Runtime: rt, Major: major, Home: meta.Home}
-	if err := writeSession(cfg.Home, cur); err != nil {
+	pid := os.Getppid()
+	if err := writeSession(cfg.Home, pid, cur); err != nil {
 		return err
 	}
-	if err := refreshShims(cfg.Home); err != nil {
+	if err := refreshShims(cfg.Home, pid); err != nil {
 		return err
 	}
 	var defaultNote string

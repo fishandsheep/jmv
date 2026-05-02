@@ -152,7 +152,8 @@ func list(ctx context.Context, cfg Config, rt Runtime, out io.Writer) error {
 }
 
 func showCurrent(cfg Config, out io.Writer) error {
-	cur, err := resolveCurrent(cfg.Home)
+	pid := os.Getppid()
+	cur, err := resolveCurrent(cfg.Home, pid)
 	if err != nil {
 		if os.IsNotExist(err) {
 			fmt.Fprintln(out, "No active Java version.")
@@ -160,7 +161,7 @@ func showCurrent(cfg Config, out io.Writer) error {
 		}
 		return err
 	}
-	if _, sessErr := readSession(cfg.Home); sessErr == nil {
+	if _, sessErr := readSession(cfg.Home, pid); sessErr == nil {
 		fmt.Fprintf(out, "%s %s (session)\n", cur.Runtime, cur.Major)
 	} else {
 		fmt.Fprintf(out, "%s %s (default)\n", cur.Runtime, cur.Major)

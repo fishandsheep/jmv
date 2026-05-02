@@ -68,7 +68,7 @@ Bash or Zsh:
 export JMV_HOME="$HOME/.jmv"
 export JMV_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
 export PATH="$HOME/.local/bin:$JMV_HOME/shims:$PATH"
-rm -f "$JMV_HOME/session.json"
+rm -rf "$JMV_HOME/sessions"
 ```
 
 Fish:
@@ -78,7 +78,7 @@ set -gx JMV_HOME "$HOME/.jmv"
 set -gx JMV_MIRROR "https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
 fish_add_path "$HOME/.local/bin"
 fish_add_path "$JMV_HOME/shims"
-rm -f "$JMV_HOME/session.json"
+rm -rf "$JMV_HOME/sessions"
 ```
 
 Verify the installation:

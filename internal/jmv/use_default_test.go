@@ -48,16 +48,17 @@ func TestUseVsDefaultDifferentBehavior(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Verify: current.json exists, session.json does NOT
+	// Verify: current.json exists, no session file for this PID
 	if _, err := os.Stat(filepath.Join(home, "current.json")); err != nil {
 		t.Fatal("current.json should exist after default")
 	}
-	if _, err := os.Stat(filepath.Join(home, "session.json")); !os.IsNotExist(err) {
-		t.Fatal("session.json should NOT exist after default")
+	pid := os.Getppid()
+	if _, err := os.Stat(sessionPathForPID(home, pid)); !os.IsNotExist(err) {
+		t.Fatal("session file should NOT exist after default")
 	}
 
 	// Verify: resolveCurrent returns jdk 17
-	cur, err := resolveCurrent(home)
+	cur, err := resolveCurrent(home, pid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,9 +72,9 @@ func TestUseVsDefaultDifferentBehavior(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Verify: session.json exists, current.json still has jdk 17
-	if _, err := os.Stat(filepath.Join(home, "session.json")); err != nil {
-		t.Fatal("session.json should exist after use")
+	// Verify: session file exists for this PID, current.json still has jdk 17
+	if _, err := os.Stat(sessionPathForPID(home, pid)); err != nil {
+		t.Fatal("session file should exist after use")
 	}
 	curJson, _ := os.ReadFile(filepath.Join(home, "current.json"))
 	if !strings.Contains(string(curJson), `"17"`) {
@@ -81,7 +82,7 @@ func TestUseVsDefaultDifferentBehavior(t *testing.T) {
 	}
 
 	// Verify: resolveCurrent returns jdk 8 (session takes priority)
-	cur, err = resolveCurrent(home)
+	cur, err = resolveCurrent(home, pid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,16 +90,26 @@ func TestUseVsDefaultDifferentBehavior(t *testing.T) {
 		t.Fatalf("expected jdk 8 from session, got %s %s", cur.Runtime, cur.Major)
 	}
 
-	// Step 3: Simulate new terminal - delete session.json
-	os.Remove(filepath.Join(home, "session.json"))
+	// Step 3: Simulate new terminal - clear session for this PID
+	clearSession(home, pid)
 
 	// Verify: resolveCurrent now returns jdk 17 (default)
-	cur, err = resolveCurrent(home)
+	cur, err = resolveCurrent(home, pid)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cur.Major != "17" {
 		t.Fatalf("expected jdk 17 (default) after session cleanup, got %s %s", cur.Runtime, cur.Major)
+	}
+
+	// Step 4: Verify session isolation - a different PID should not see session
+	otherPID := pid + 99999
+	cur, err = resolveCurrent(home, otherPID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cur.Major != "17" {
+		t.Fatalf("expected jdk 17 (default) for unrelated PID, got %s %s", cur.Runtime, cur.Major)
 	}
 
 	t.Log("PASS: use vs default behavior verified")

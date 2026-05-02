@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func refreshShims(home string) error {
+func refreshShims(home string, sessionPID int) error {
 	dir := shimsDir(home)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
@@ -18,7 +18,7 @@ func refreshShims(home string) error {
 		return err
 	}
 
-	cur, err := resolveCurrent(home)
+	cur, err := resolveCurrent(home, sessionPID)
 	if err != nil {
 		return nil
 	}
@@ -87,7 +87,7 @@ func isExecutable(info fs.FileInfo) bool {
 }
 
 func runShim(home string, exe string, args []string) error {
-	cur, err := resolveCurrent(home)
+	cur, err := resolveCurrent(home, os.Getppid())
 	if err != nil {
 		return errf("no active Java version; run `jmv default <major>` first")
 	}

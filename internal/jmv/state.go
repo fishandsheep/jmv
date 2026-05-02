@@ -51,29 +51,35 @@ func clearCurrent(home string) error {
 	return err
 }
 
-func writeSession(home string, cur Current) error {
-	return writeJSON(sessionPath(home), cur)
+func writeSession(home string, pid int, cur Current) error {
+	return writeJSON(sessionPathForPID(home, pid), cur)
 }
 
-func readSession(home string) (Current, error) {
+func readSession(home string, pid int) (Current, error) {
 	var cur Current
-	if err := readJSON(sessionPath(home), &cur); err != nil {
+	if err := readJSON(sessionPathForPID(home, pid), &cur); err != nil {
 		return Current{}, err
 	}
 	return cur, nil
 }
 
-func clearSession(home string) error {
-	err := os.Remove(sessionPath(home))
+func clearSession(home string, pid int) error {
+	err := os.Remove(sessionPathForPID(home, pid))
 	if os.IsNotExist(err) {
 		return nil
 	}
 	return err
 }
 
-func resolveCurrent(home string) (Current, error) {
-	if cur, err := readSession(home); err == nil {
-		return cur, nil
+func clearAllSessions(home string) error {
+	return os.RemoveAll(sessionDir(home))
+}
+
+func resolveCurrent(home string, sessionPID int) (Current, error) {
+	if sessionPID > 0 {
+		if cur, err := readSession(home, sessionPID); err == nil {
+			return cur, nil
+		}
 	}
 	return readCurrent(home)
 }

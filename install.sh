@@ -116,7 +116,7 @@ configure_shell() {
 export JMV_HOME="'"$jmv_home"'"
 export JMV_MIRROR="'"$mirror"'"
 export PATH="'"$install_dir"':$JMV_HOME/shims:$PATH"
-rm -f "$JMV_HOME/session.json"'
+rm -rf "$JMV_HOME/sessions"'
 
 	fish_block='
 # jmv configuration
@@ -124,7 +124,7 @@ set -gx JMV_HOME "'"$jmv_home"'"
 set -gx JMV_MIRROR "'"$mirror"'"
 fish_add_path "'"$install_dir"'"
 fish_add_path "'"$jmv_home"'/shims"
-rm -f "$JMV_HOME/session.json"'
+rm -rf "$JMV_HOME/sessions"'
 
 	case "$shell_name" in
 		bash)
@@ -188,14 +188,14 @@ print_shell_manual() {
 export JMV_HOME="$HOME/.jmv"
 export JMV_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
 export PATH="$HOME/.local/bin:$JMV_HOME/shims:$PATH"
-rm -f "$JMV_HOME/session.json"
+rm -rf "$JMV_HOME/sessions"
 
 # Fish (append to ~/.config/fish/config.fish):
 set -gx JMV_HOME "$HOME/.jmv"
 set -gx JMV_MIRROR "https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
 fish_add_path "$HOME/.local/bin"
 fish_add_path "$JMV_HOME/shims"
-rm -f "$JMV_HOME/session.json"
+rm -rf "$JMV_HOME/sessions"
 EOF
 }
 

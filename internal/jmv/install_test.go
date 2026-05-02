@@ -120,8 +120,9 @@ func TestInstallShowsInstalledAndUseSetsSessionOverride(t *testing.T) {
 	if err := activateUse(cfg, RuntimeJDK, "17", &out); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(home, "session.json")); err != nil {
-		t.Fatalf("jmv use should create session.json, err=%v", err)
+	pid := os.Getppid()
+	if _, err := os.Stat(sessionPathForPID(home, pid)); err != nil {
+		t.Fatalf("jmv use should create session file, err=%v", err)
 	}
 	if _, err := os.Stat(filepath.Join(home, "current.json")); !os.IsNotExist(err) {
 		t.Fatalf("jmv use should NOT create current.json")
