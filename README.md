@@ -12,7 +12,7 @@ Java commands through shims.
 After publishing release archives, install the latest binary with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fishandsheep/okm/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/fishandsheep/jmv/main/install.sh | sh
 ```
 
 The installer downloads the matching `jmv_<os>_<arch>.tar.gz` release, installs `jmv` to
