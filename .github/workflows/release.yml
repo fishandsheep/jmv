@@ -71,3 +71,47 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/fishandsheep/jmv/main/install.sh | sh
           \`\`\`" \
             --latest
+
+      - name: Update Scoop manifest
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          amd64_hash="$(awk '/jmv_windows_amd64.zip$/ {print $1}' dist/checksums.txt)"
+          arm64_hash="$(awk '/jmv_windows_arm64.zip$/ {print $1}' dist/checksums.txt)"
+          export version amd64_hash arm64_hash
+
+          python - <<'PY'
+          import json, os
+          path = "bucket/jmv.json"
+          version = os.environ["version"]
+          amd64_hash = os.environ["amd64_hash"]
+          arm64_hash = os.environ["arm64_hash"]
+
+          with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+          data["version"] = version
+          data["architecture"]["64bit"]["url"] = f"https://github.com/fishandsheep/jmv/releases/download/v{version}/jmv_windows_amd64.zip"
+          data["architecture"]["64bit"]["hash"] = amd64_hash
+          data["architecture"]["arm64"]["url"] = f"https://github.com/fishandsheep/jmv/releases/download/v{version}/jmv_windows_arm64.zip"
+          data["architecture"]["arm64"]["hash"] = arm64_hash
+
+          with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          default_branch="${GITHUB_BASE_REF:-main}"
+          git fetch origin "$default_branch"
+          git checkout "$default_branch"
+          git add bucket/jmv.json
+          if git diff --cached --quiet; then
+            echo "No bucket manifest changes detected."
+            exit 0
+          fi
+          git commit -m "chore: update scoop manifest for ${TAG}"
+          git push origin "HEAD:${default_branch}"

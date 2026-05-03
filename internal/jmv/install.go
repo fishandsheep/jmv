@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -205,6 +206,9 @@ func activateUse(cfg Config, rt Runtime, major string, out io.Writer) error {
 	}
 	cur := Current{Runtime: rt, Major: major, Home: meta.Home}
 	pid := os.Getppid()
+	if runtime.GOOS == "windows" {
+		pid = globalSessionPID
+	}
 	if err := writeSession(cfg.Home, pid, cur); err != nil {
 		return err
 	}
