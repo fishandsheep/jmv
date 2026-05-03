@@ -20,11 +20,37 @@
   "autoupdate": {
     "architecture": {
       "64bit": {
-        "url": "https://github.com/fishandsheep/jmv/releases/download/v$version/jmv_windows_amd64.zip"
+        "url": "https://github.com/fishandsheep/jmv/releases/download/v$version/jmv_windows_amd64.zip",
+        "hash": {
+          "url": "https://github.com/fishandsheep/jmv/releases/download/v$version/checksums.txt",
+          "find": "jmv_windows_amd64.zip"
+        }
       },
       "arm64": {
-        "url": "https://github.com/fishandsheep/jmv/releases/download/v$version/jmv_windows_arm64.zip"
+        "url": "https://github.com/fishandsheep/jmv/releases/download/v$version/jmv_windows_arm64.zip",
+        "hash": {
+          "url": "https://github.com/fishandsheep/jmv/releases/download/v$version/checksums.txt",
+          "find": "jmv_windows_arm64.zip"
+        }
       }
     }
-  }
+  },
+  "persist": [
+    "jmv-home"
+  ],
+  "env_set": {
+    "JMV_HOME": "$persist_dir"
+  },
+  "env_add_path": [
+    "$env:JMV_HOME\\shims"
+  ],
+  "post_install": [
+    "if (!(Test-Path \"$env:JMV_HOME\")) { New-Item -ItemType Directory -Path \"$env:JMV_HOME\" | Out-Null }",
+    "if (!(Test-Path \"$env:JMV_HOME\\shims\")) { New-Item -ItemType Directory -Path \"$env:JMV_HOME\\shims\" | Out-Null }",
+    "Write-Host \"jmv configured JMV_HOME=$env:JMV_HOME\"",
+    "Write-Host \"Restart your shell after installation to load PATH updates.\""
+  ],
+  "post_uninstall": [
+    "Write-Host \"Scoop removed jmv. You may delete $env:USERPROFILE\\scoop\\persist\\jmv\\jmv-home if no longer needed.\""
+  ]
 }

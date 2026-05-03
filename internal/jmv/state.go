@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 )
+
+const globalSessionPID = 0
 
 func writeMetadata(home string, release Release, javaHome string) error {
 	if err := os.MkdirAll(filepath.Dir(metadataPath(home, release.Runtime, release.Major)), 0o755); err != nil {
@@ -78,6 +81,11 @@ func clearAllSessions(home string) error {
 func resolveCurrent(home string, sessionPID int) (Current, error) {
 	if sessionPID > 0 {
 		if cur, err := readSession(home, sessionPID); err == nil {
+			return cur, nil
+		}
+	}
+	if runtime.GOOS == "windows" {
+		if cur, err := readSession(home, globalSessionPID); err == nil {
 			return cur, nil
 		}
 	}
