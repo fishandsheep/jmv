@@ -1,6 +1,7 @@
 package jmv
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -10,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 )
+
+var installPromptIn io.Reader = os.Stdin
 
 func install(ctx context.Context, cfg Config, rt Runtime, major string, out io.Writer) error {
 	if err := ensureLayout(cfg.Home); err != nil {
@@ -63,8 +66,44 @@ func install(ctx context.Context, cfg Config, rt Runtime, major string, out io.W
 		return err
 	}
 	fmt.Fprintf(out, "Installed %s %s at %s\n", rt, major, dest)
-	fmt.Fprintln(out, "Run `jmv default` to switch shims to this runtime.")
+	return maybeConfigureDefaultAfterInstall(cfg, rt, major, out)
+}
+
+func maybeConfigureDefaultAfterInstall(cfg Config, rt Runtime, major string, out io.Writer) error {
+	hasDefault := false
+	if cur, err := readCurrent(cfg.Home); err == nil {
+		hasDefault = cur.Runtime == rt
+	}
+
+	if !hasDefault {
+		if err := activateDefault(cfg, rt, major, out); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "Automatically set default %s to %s (first install).\n", rt, major)
+		return nil
+	}
+
+	if shouldSetDefault(out) {
+		if err := activateDefault(cfg, rt, major, out); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "Default %s updated to %s.\n", rt, major)
+		return nil
+	}
+
+	fmt.Fprintf(out, "Keeping existing default. Run `jmv default --runtime %s %s` to switch later.\n", rt, major)
 	return nil
+}
+
+func shouldSetDefault(out io.Writer) bool {
+	fmt.Fprint(out, "Set this version as default now? (Y/n, default: y): ")
+	reader := bufio.NewReader(installPromptIn)
+	answer, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return true
+	}
+	answer = strings.ToLower(strings.TrimSpace(answer))
+	return answer == "" || answer == "y" || answer == "yes"
 }
 
 func download(ctx context.Context, url, path string, out io.Writer) error {
@@ -192,6 +231,9 @@ func activateDefault(cfg Config, rt Runtime, major string, out io.Writer) error 
 		return err
 	}
 	_ = clearSession(cfg.Home, os.Getppid())
+	if runtime.GOOS == "windows" {
+		_ = clearSession(cfg.Home, globalSessionPID)
+	}
 	if err := refreshShims(cfg.Home, os.Getppid()); err != nil {
 		return err
 	}
