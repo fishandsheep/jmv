@@ -14,6 +14,10 @@ import (
 )
 
 func TestInstallActivateCurrentAndUninstall(t *testing.T) {
+	originalPrompt := installPromptIn
+	installPromptIn = strings.NewReader("\n")
+	t.Cleanup(func() { installPromptIn = originalPrompt })
+
 	archive := tinyJDKArchive(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +51,14 @@ func TestInstallActivateCurrentAndUninstall(t *testing.T) {
 		t.Fatalf("expected extracted java at %s: %v", javaPath, err)
 	}
 
+	curAuto, err := readCurrent(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if curAuto.Major != "17" {
+		t.Fatalf("expected first install to auto-set default to 17, got %#v", curAuto)
+	}
+
 	out.Reset()
 	if err := activateDefault(cfg, RuntimeJDK, "17", &out); err != nil {
 		t.Fatal(err)
@@ -72,6 +84,9 @@ func TestInstallActivateCurrentAndUninstall(t *testing.T) {
 }
 
 func TestInstallShowsInstalledAndUseSetsSessionOverride(t *testing.T) {
+	originalPrompt := installPromptIn
+	installPromptIn = strings.NewReader("\n")
+	t.Cleanup(func() { installPromptIn = originalPrompt })
 	archive := tinyJDKArchive(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
@@ -124,11 +139,58 @@ func TestInstallShowsInstalledAndUseSetsSessionOverride(t *testing.T) {
 	if _, err := os.Stat(sessionPathForPID(home, pid)); err != nil {
 		t.Fatalf("jmv use should create session file, err=%v", err)
 	}
-	if _, err := os.Stat(filepath.Join(home, "current.json")); !os.IsNotExist(err) {
-		t.Fatalf("jmv use should NOT create current.json")
+	cur, err := readCurrent(home)
+	if err != nil {
+		t.Fatalf("expected current.json to remain after use: %v", err)
+	}
+	if cur.Major != "17" {
+		t.Fatalf("expected default to remain 17 after use, got %#v", cur)
 	}
 	if !strings.Contains(out.String(), "session") {
 		t.Fatalf("expected session indicator in use output: %s", out.String())
+	}
+}
+
+func TestInstallPromptCanKeepExistingDefault(t *testing.T) {
+	archive := tinyJDKArchive(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<a href="OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz">jdk</a>`))
+	})
+	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz", func(w http.ResponseWriter, r *http.Request) {
+		w.Write(archive)
+	})
+	mux.HandleFunc("/Adoptium/8/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<a href="OpenJDK8U-jdk_x64_linux_hotspot_8.0.432_6.tar.gz">jdk</a>`))
+	})
+	mux.HandleFunc("/Adoptium/8/jdk/x64/linux/OpenJDK8U-jdk_x64_linux_hotspot_8.0.432_6.tar.gz", func(w http.ResponseWriter, r *http.Request) {
+		w.Write(archive)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	home := t.TempDir()
+	cfg := Config{Home: home, Mirror: server.URL + "/Adoptium"}
+
+	originalPrompt := installPromptIn
+	installPromptIn = strings.NewReader("n\n")
+	t.Cleanup(func() { installPromptIn = originalPrompt })
+
+	var out bytes.Buffer
+	if err := install(context.Background(), cfg, RuntimeJDK, "17", &out); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	if err := install(context.Background(), cfg, RuntimeJDK, "8", &out); err != nil {
+		t.Fatal(err)
+	}
+
+	cur, err := readCurrent(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cur.Major != "17" {
+		t.Fatalf("expected to keep existing default 17, got %#v", cur)
 	}
 }
 

@@ -45,10 +45,21 @@
     "$env:JMV_HOME\\shims"
   ],
   "post_install": [
+    "Write-Host \"    ___  _____ ______   ___      ___\"",
+    "Write-Host \"   |\\  \\|\\   _ \\  _   \\|\\  \\    /  /|\"",
+    "Write-Host \"   \\ \\  \\ \\  \\\\\\__\\ \\  \\ \\  \\  /  / /\"",
+    "Write-Host \" __ \\ \\  \\ \\  \\|__| \\  \\ \\  \\  \\/  / /\"",
+    "Write-Host \"|\\  \\\\_\\  \\ \\  \\    \\ \\  \\ \\    / /\"",
+    "Write-Host \"\\ \\________\\ \\__\\    \\ \\__\\ \\__/ /\"",
+    "Write-Host \" \\|________|\\|__|     \\|__|\\|__|/    (JDK/JRE MANAGE VERSION)\"",
     "if (!(Test-Path \"$env:JMV_HOME\")) { New-Item -ItemType Directory -Path \"$env:JMV_HOME\" | Out-Null }",
     "if (!(Test-Path \"$env:JMV_HOME\\shims\")) { New-Item -ItemType Directory -Path \"$env:JMV_HOME\\shims\" | Out-Null }",
+    "$shimPath = \"$env:JMV_HOME\\shims\"",
+    "if ($env:PATH -notlike \"*$shimPath*\") { $env:PATH = \"$shimPath;$env:PATH\" }",
+    "$userPath = [Environment]::GetEnvironmentVariable(\"Path\", \"User\")",
+    "if ($userPath -notlike \"*$shimPath*\") { [Environment]::SetEnvironmentVariable(\"Path\", \"$shimPath;$userPath\", \"User\") }",
     "Write-Host \"jmv configured JMV_HOME=$env:JMV_HOME\"",
-    "Write-Host \"Restart your shell after installation to load PATH updates.\""
+    "Write-Host \"Added $shimPath to current shell PATH and user PATH.\""
   ],
   "post_uninstall": [
     "Write-Host \"Scoop removed jmv. You may delete $env:USERPROFILE\\scoop\\persist\\jmv\\jmv-home if no longer needed.\""
