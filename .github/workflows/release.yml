@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -107,6 +109,8 @@ jobs:
 
           default_branch="${GITHUB_BASE_REF:-main}"
           git fetch origin "$default_branch"
+          git checkout "$default_branch"
+          git rebase origin/"$default_branch"
           # Simply add and commit the changes
           git add bucket/jmv.json
           if git diff --cached --quiet; then
@@ -114,4 +118,4 @@ jobs:
             exit 0
           fi
           git commit -m "chore: update scoop manifest for ${TAG}"
-          git push origin "HEAD:${default_branch}"
+          git push origin "$default_branch"
