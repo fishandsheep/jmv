@@ -6,11 +6,11 @@
   "architecture": {
     "64bit": {
       "url": "https://github.com/fishandsheep/jmv/releases/download/v0.1.0/jmv_windows_amd64.zip",
-      "hash": "4b66948fff750fa10813670eb6d86eaddedb0e635b7653e25e829d9513069985"
+      "hash": "5ee5b731b1b4c46ced6fa02defa273a1712a7126655c7f9901fd582ff00e989d"
     },
     "arm64": {
       "url": "https://github.com/fishandsheep/jmv/releases/download/v0.1.0/jmv_windows_arm64.zip",
-      "hash": "0dab0da1ed71c433dc0454f9cd0859baa3cf63056fd28256d69ded4f67cbc193"
+      "hash": "c3691b0d028ba09013c352bfc02acdcb1674eac829b1c967d24b310370d8f567"
     }
   },
   "bin": "jmv.exe",
