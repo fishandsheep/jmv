@@ -9,29 +9,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Development Commands
 
 ```bash
-go build ./cmd/jmv          # Build the CLI binary
-go test ./...               # Run all tests
-go run ./cmd/jmv list       # Run CLI locally
-gofmt -w cmd internal       # Format Go code
-sh -n install.sh            # Validate installer script syntax
+go build ./cmd/jmv                    # Build the CLI binary
+go test ./...                         # Run all tests
+go test ./internal/jmv/ -run TestX    # Run a single test
+go run ./cmd/jmv list                 # Run CLI locally
+gofmt -w cmd internal                 # Format Go code
+sh -n install.sh                      # Validate installer script syntax
 ```
 
-CI (GitHub Actions) checks formatting, validates `install.sh`, runs tests, and builds the binary on every push to `main` and on PRs.
+CI (GitHub Actions) checks formatting, validates `install.sh`, runs tests, and builds the binary on every push to `main` and on PRs. Release workflow cross-compiles for Linux/macOS/Windows and publishes to GitHub Releases + Scoop bucket.
 
 ## Architecture
 
-Single Go module with all logic in `internal/jmv/` and the entry point at `cmd/jmv/main.go`.
+Single Go module (`jmv`). Entry point at `cmd/jmv/main.go` calls `jmv.Run()`, which dispatches via a `switch` on the command name (with aliases like `ls`/`i`/`rm`/`u`/`d`). All business logic lives in `internal/jmv/`.
 
-- **cli.go** — Command routing and argument parsing. Dispatches to subcommands (`list`, `install`, `use`, `default`, etc.)
-- **config.go** — Configuration loading, platform detection (OS/arch), environment variables (`JMV_HOME`, `JMV_MIRROR`)
-- **mirror.go** — Scrapes the Adoptium mirror HTML to discover available JDK/JRE versions and resolve download URLs
-- **install.go** — Downloads archives, extracts them, and tracks installation metadata
-- **shim.go** — Generates wrapper executables in `$JMV_HOME/shims` that route to the active JDK's binaries
-- **state.go** — Manages `session.json` (current session version) and the persistent default version
-- **types.go** — Shared type definitions (Runtime type: JDK/JRE, version structs)
-- **archive.go** — Archive extraction utilities
-- **paths.go** — Path resolution helpers
-- **errors.go** — Custom error formatting
+**Command flow**: `cli.go` routes → loads `Config` (platform detection, env vars) → calls domain functions in `install.go`, `state.go`, `shim.go`, or `mirror.go`.
+
+**`--runtime` flag**: Every version-aware command (`list`, `install`, `uninstall`, `use`, `default`) accepts `--runtime jdk|jre`. Parsed by `parseRuntime()` which strips the flag and returns the remaining args.
+
+**Mirror scraping** (`mirror.go`): `MirrorClient` crawls the TUNA Adoptium HTML index. `Majors()` extracts version directories from the root, `Resolve()` navigates `/<major>/<runtime>/<arch>/<os>/` and picks the latest archive by filename sort. No API key needed.
+
+**Shim mechanism** (`shim.go`): `refreshShims()` generates wrapper scripts in `$JMV_HOME/shims/` (shell scripts on Unix, `.cmd` on Windows) that invoke `jmv shim <executable>`, which resolves the active version via parent PID session tracking.
+
+**State management** (`state.go`): Two layers — `session.json` (keyed by parent PID, for `jmv use`) and a persistent default file. `resolveCurrent()` checks session first, then falls back to default.
 
 ## Key Design Concepts
 
