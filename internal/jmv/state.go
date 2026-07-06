@@ -54,6 +54,26 @@ func clearCurrent(home string) error {
 	return err
 }
 
+func writeMavenCurrent(home string, cur Current) error {
+	return writeJSON(mavenCurrentPath(home), cur)
+}
+
+func readMavenCurrent(home string) (Current, error) {
+	var cur Current
+	if err := readJSON(mavenCurrentPath(home), &cur); err != nil {
+		return Current{}, err
+	}
+	return cur, nil
+}
+
+func clearMavenCurrent(home string) error {
+	err := os.Remove(mavenCurrentPath(home))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
 func writeSession(home string, pid int, cur Current) error {
 	return writeJSON(sessionPathForPID(home, pid), cur)
 }

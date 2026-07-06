@@ -15,16 +15,13 @@ func TestParseRuntimeDefaultsToJDK(t *testing.T) {
 	}
 }
 
-func TestParseRuntimeFlagWithoutValueDefaultsToJDK(t *testing.T) {
+func TestParseRuntimeRejectsInvalidValue(t *testing.T) {
 	rt, rest, err := parseRuntime([]string{"-r", "17"})
-	if err != nil {
-		t.Fatal(err)
+	if err == nil {
+		t.Fatalf("expected invalid runtime error, got rt=%s rest=%#v", rt, rest)
 	}
-	if rt != RuntimeJDK {
-		t.Fatalf("expected runtime jdk, got %s", rt)
-	}
-	if len(rest) != 1 || rest[0] != "17" {
-		t.Fatalf("unexpected rest args: %#v", rest)
+	if err.Error() != "runtime must be jdk or jre" {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

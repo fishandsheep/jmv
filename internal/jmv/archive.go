@@ -68,10 +68,14 @@ func extractTarGz(archivePath, dest string) error {
 				return closeErr
 			}
 		case tar.TypeSymlink:
+			linkTarget, ok := archiveSymlinkTarget(filepath.Dir(target), h.Linkname, dest)
+			if !ok {
+				return errf("refusing to extract unsafe symlink: %s -> %s", h.Name, h.Linkname)
+			}
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
-			if err := os.Symlink(h.Linkname, target); err != nil && !os.IsExist(err) {
+			if err := os.Symlink(linkTarget, target); err != nil && !os.IsExist(err) {
 				return err
 			}
 		}
@@ -122,6 +126,18 @@ func extractZip(archivePath, dest string) error {
 		}
 	}
 	return nil
+}
+
+func archiveSymlinkTarget(linkDir, linkName, dest string) (string, bool) {
+	if filepath.IsAbs(linkName) {
+		return "", false
+	}
+	target := filepath.Clean(filepath.Join(linkDir, filepath.FromSlash(linkName)))
+	rel, err := filepath.Rel(dest, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return linkName, true
 }
 
 func archiveTarget(dest, name string) (string, bool) {

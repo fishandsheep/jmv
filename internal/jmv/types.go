@@ -3,15 +3,17 @@ package jmv
 import "time"
 
 const (
-	DefaultMirror = "https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
-	Version       = "0.1.0"
+	DefaultMirror      = "https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
+	DefaultMavenMirror = "https://mirrors.aliyun.com/apache/maven"
+	Version            = "0.1.0"
 )
 
 type Runtime string
 
 const (
-	RuntimeJDK Runtime = "jdk"
-	RuntimeJRE Runtime = "jre"
+	RuntimeJDK   Runtime = "jdk"
+	RuntimeJRE   Runtime = "jre"
+	RuntimeMaven Runtime = "maven"
 )
 
 type Platform struct {
@@ -25,6 +27,7 @@ type Release struct {
 	Major    string
 	FileName string
 	URL      string
+	SHA256   string
 	Platform Platform
 }
 

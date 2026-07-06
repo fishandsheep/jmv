@@ -30,7 +30,7 @@ jobs:
           mkdir -p dist
 
           # Linux/macOS — tar.gz
-          for pair in linux/amd64 linux/arm64 linux/386 linux/arm darwin/amd64 darwin/arm64; do
+          for pair in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
             os="${pair%%/*}"
             arch="${pair##*/}"
             ext="tar.gz"
@@ -43,7 +43,7 @@ jobs:
           done
 
           # Windows — zip
-          for arch in amd64 arm64 386; do
+          for arch in amd64 arm64; do
             os="windows"
             ext="zip"
 

@@ -12,6 +12,7 @@ import (
 )
 
 func TestUseVsDefaultDifferentBehavior(t *testing.T) {
+	disableProfileMutation(t)
 	archive := tinyJDKArchive(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {

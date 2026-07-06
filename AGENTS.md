@@ -2,51 +2,49 @@
 
 ## Project Structure & Module Organization
 
-This repository contains `jmv`, a minimal OpenJDK manager backed by the TUNA Adoptium mirror. The Go module
-is defined in `go.mod` and targets Go 1.22. The CLI entry point is `cmd/jmv/main.go`. Core implementation
-code lives in `internal/jmv/`, including configuration, path handling, mirror access, archive handling,
-installation, shims, and CLI command wiring. Tests are colocated with package code in `internal/jmv/` using
-Go `_test.go` files, for example `install_test.go` and `mirror_test.go`.
+`jmv` is a Go 1.22 command-line tool for managing OpenJDK/JRE installs through a local `JMV_HOME`.
+
+- `cmd/jmv/`: CLI entry point. Keep command parsing and user-facing wiring here.
+- `internal/`: private packages for install, mirror, shim, version, and filesystem logic.
+- `install.sh`: POSIX shell installer used by the one-line install path.
+- `bucket/jmv.json`: Scoop manifest updated during releases.
+- `.github/workflows/ci.yml`: formatting, shell syntax, tests, and build checks.
+- `.github/workflows/release.yml`: tagged-release build and manifest update workflow.
+
+Place Go tests beside the package they cover using `*_test.go`.
 
 ## Build, Test, and Development Commands
 
-- `go test ./...` runs the full Go test suite.
-- `go run ./cmd/jmv list` runs the CLI locally and lists available JDK versions.
-- `go run ./cmd/jmv install 17` exercises a local install flow for JDK 17.
-- `go run ./cmd/jmv list --runtime jre` lists JRE versions instead of the default JDK runtime.
-- `go build ./cmd/jmv` compiles the CLI binary for local verification.
-- `gofmt -w <files>` formats edited Go files before committing.
-
-Configuration can be overridden with environment variables:
+Run these from the repository root:
 
 ```bash
-export JMV_HOME="$HOME/.jmv"
-export JMV_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
-export PATH="$HOME/.jmv/shims:$PATH"
+go test ./...          # run all Go tests
+go build ./cmd/jmv     # build the CLI
+go run ./cmd/jmv list  # run a local command during development
+sh -n install.sh       # validate installer shell syntax
+gofmt -w cmd internal  # format Go source before committing
 ```
+
+CI also checks `test -z "$(gofmt -l .)"`, so keep all Go files formatted.
 
 ## Coding Style & Naming Conventions
 
-Use idiomatic Go and keep package APIs small. Format all Go changes with `gofmt`. Prefer clear, focused
-functions and table-driven tests when adding cases. Keep unexported helpers lowercase unless they are part
-of the CLI-facing behavior that must be shared across files. Name test files with the `_test.go` suffix and
-test functions as `Test<Behavior>`.
+Use standard Go formatting and idioms. Prefer small package-level functions with clear error returns over hidden global state. Keep exported names only for APIs that must cross package boundaries; otherwise use unexported `camelCase` identifiers. Use concise command names and aliases that match README examples, such as `install/i`, `default/d`, and `current/c`.
+
+Shell scripts should stay POSIX-compatible unless the shebang changes. Quote variables in `install.sh`, and validate edits with `sh -n install.sh`.
 
 ## Testing Guidelines
 
-Add or update tests for changes to install behavior, mirror parsing, path selection, archive handling, or
-configuration defaults. Keep tests deterministic: use temporary directories, local fixtures, or stubbed
-responses rather than relying on live mirror state when practical. Run `go test ./...` before submitting
-changes.
+Use Go's built-in `testing` package. Name tests `TestThingDoesBehavior`, and prefer table-driven tests for command parsing, version selection, path handling, and mirror URL construction. Avoid tests that write to real `JMV_HOME`; use temporary directories from `t.TempDir()`.
+
+Before opening a PR, run `go test ./...`, `go build ./cmd/jmv`, and `sh -n install.sh`.
 
 ## Commit & Pull Request Guidelines
 
-Use concise, focused commits. Conventional prefixes such as `fix:`, `docs:`, `test:`, and `chore:` are
-preferred when they fit the change. Pull requests should explain the user-visible behavior, note any config
-or filesystem impact, and include the test command run. Keep PRs small enough to review in one pass.
+Recent history uses short, imperative subjects with prefixes such as `fix:`, `chore:`, and `docs:`. Follow that style, for example `fix: handle missing default runtime`.
+
+PRs should include a clear summary, test results, and any installer or release impact. Link related issues when available. Include screenshots or terminal output only when CLI behavior or install output changes.
 
 ## Security & Configuration Tips
 
-Do not commit downloaded JDK/JRE archives, local `JMV_HOME` contents, credentials, or generated binaries.
-Be explicit when changing default mirror URLs, archive extraction behavior, or shim generation because those
-paths affect user machines directly.
+Do not commit downloaded JDK/JRE archives, local runtime directories, or secrets. Treat `JMV_HOME`, `JMV_MIRROR`, and shell profile edits as user-controlled configuration.

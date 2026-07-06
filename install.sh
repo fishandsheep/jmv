@@ -6,6 +6,7 @@ version="${JMV_VERSION:-latest}"
 install_dir="${JMV_INSTALL_DIR:-$HOME/.local/bin}"
 jmv_home="${JMV_HOME:-$HOME/.jmv}"
 mirror="${JMV_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/Adoptium}"
+maven_mirror="${JMV_MAVEN_MIRROR:-https://mirrors.aliyun.com/apache/maven}"
 
 die() {
 	printf 'jmv install: %s\n' "$*" >&2
@@ -115,6 +116,7 @@ configure_shell() {
 # jmv configuration
 export JMV_HOME="'"$jmv_home"'"
 export JMV_MIRROR="'"$mirror"'"
+export JMV_MAVEN_MIRROR="'"$maven_mirror"'"
 export PATH="'"$install_dir"':$JMV_HOME/shims:$PATH"
 rm -rf "$JMV_HOME/sessions"'
 
@@ -122,6 +124,7 @@ rm -rf "$JMV_HOME/sessions"'
 # jmv configuration
 set -gx JMV_HOME "'"$jmv_home"'"
 set -gx JMV_MIRROR "'"$mirror"'"
+set -gx JMV_MAVEN_MIRROR "'"$maven_mirror"'"
 fish_add_path "'"$install_dir"'"
 fish_add_path "'"$jmv_home"'/shims"
 rm -rf "$JMV_HOME/sessions"'
@@ -187,12 +190,14 @@ print_shell_manual() {
 # Bash / Zsh (append to ~/.bashrc or ~/.zshrc):
 export JMV_HOME="$HOME/.jmv"
 export JMV_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
+export JMV_MAVEN_MIRROR="https://mirrors.aliyun.com/apache/maven"
 export PATH="$HOME/.local/bin:$JMV_HOME/shims:$PATH"
 rm -rf "$JMV_HOME/sessions"
 
 # Fish (append to ~/.config/fish/config.fish):
 set -gx JMV_HOME "$HOME/.jmv"
 set -gx JMV_MIRROR "https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
+set -gx JMV_MAVEN_MIRROR "https://mirrors.aliyun.com/apache/maven"
 fish_add_path "$HOME/.local/bin"
 fish_add_path "$JMV_HOME/shims"
 rm -rf "$JMV_HOME/sessions"

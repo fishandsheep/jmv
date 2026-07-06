@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 )
 
 func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
@@ -79,6 +80,8 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return usage("jmv current")
 		}
 		return showCurrent(cfg, out)
+	case "maven", "mvn":
+		return runMaven(ctx, cfg, args, out)
 	case "shim":
 		if len(args) < 1 {
 			return usage("jmv shim <executable> [args...]")
@@ -98,10 +101,6 @@ func parseRuntime(args []string) (Runtime, []string, error) {
 		switch args[i] {
 		case "--runtime", "-r":
 			if i+1 >= len(args) || args[i+1] == "" || args[i+1][0] == '-' {
-				rt = RuntimeJDK
-				continue
-			}
-			if args[i+1] != "jdk" && args[i+1] != "jre" {
 				rt = RuntimeJDK
 				continue
 			}
@@ -161,7 +160,7 @@ func showCurrent(cfg Config, out io.Writer) error {
 		}
 		return err
 	}
-	if _, sessErr := readSession(cfg.Home, pid); sessErr == nil {
+	if currentFromSession(cfg.Home, pid) {
 		fmt.Fprintf(out, "%s %s (session)\n", cur.Runtime, cur.Major)
 	} else {
 		fmt.Fprintf(out, "%s %s (default)\n", cur.Runtime, cur.Major)
@@ -172,6 +171,67 @@ func showCurrent(cfg Config, out io.Writer) error {
 		fmt.Fprintf(out, "Download URL: %s\n", meta.URL)
 	}
 	return nil
+}
+
+func currentFromSession(home string, pid int) bool {
+	if pid > 0 {
+		if _, err := readSession(home, pid); err == nil {
+			return true
+		}
+	}
+	if runtime.GOOS == "windows" {
+		if _, err := readSession(home, globalSessionPID); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func runMaven(ctx context.Context, cfg Config, args []string, out io.Writer) error {
+	if len(args) == 0 {
+		return usage("jmv maven <list|install|uninstall|use|default|current|config>")
+	}
+	cmd := args[0]
+	rest := args[1:]
+	switch cmd {
+	case "list", "ls":
+		if len(rest) != 0 {
+			return usage("jmv maven list")
+		}
+		return mavenList(ctx, cfg, out)
+	case "install", "i":
+		if len(rest) != 1 {
+			return usage("jmv maven install <version|latest>")
+		}
+		return mavenInstall(ctx, cfg, rest[0], out)
+	case "uninstall", "rm":
+		if len(rest) != 1 {
+			return usage("jmv maven uninstall <version>")
+		}
+		return mavenUninstall(cfg, rest[0], out)
+	case "use", "u":
+		if len(rest) != 1 {
+			return usage("jmv maven use <version>")
+		}
+		return mavenUse(cfg, rest[0], out)
+	case "default", "d":
+		if len(rest) != 1 {
+			return usage("jmv maven default <version>")
+		}
+		return mavenDefault(cfg, rest[0], out)
+	case "current", "c":
+		if len(rest) != 0 {
+			return usage("jmv maven current")
+		}
+		return mavenCurrent(cfg, out)
+	case "config":
+		if len(rest) != 0 {
+			return usage("jmv maven config")
+		}
+		return mavenConfig(cfg, out)
+	default:
+		return usage("jmv maven <list|install|uninstall|use|default|current|config>")
+	}
 }
 
 func printLogo(out io.Writer) {
@@ -188,28 +248,32 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, `Usage: jmv <command> [options]
 
 Commands:
-  list      or ls             [-r|--runtime [jdk]]
-  install   or i              [-r|--runtime [jdk]] <major>
-  uninstall or rm             [-r|--runtime [jdk]] <major>
-  use       or u              [-r|--runtime [jdk]] <major>
-  default   or d              [-r|--runtime [jdk]] <major>
+  list      or ls             [-r|--runtime jdk|jre]
+  install   or i              [-r|--runtime jdk|jre] <major>
+  uninstall or rm             [-r|--runtime jdk|jre] <major>
+  use       or u              [-r|--runtime jdk|jre] <major>
+  default   or d              [-r|--runtime jdk|jre] <major>
   current   or c
+  maven                       <list|install|uninstall|use|default|current|config>
   version   or v
   help      or h
 
 Options:
-  --runtime, -r [jdk|jre]     Defaults to jdk.
+  --runtime, -r jdk|jre       Defaults to jdk.
 
 Environment:
   JMV_HOME                    Defaults to ~/.jmv.
   JMV_MIRROR                  Defaults to TUNA Adoptium mirror.
+  JMV_MAVEN_MIRROR            Defaults to Aliyun Apache Maven mirror.
 
 Examples:
   jmv list
   jmv install 17
   jmv install --runtime jre 17
   jmv default 17
-  jmv use 17`)
+  jmv use 17
+  jmv maven install latest
+  jmv maven default 3.9.11`)
 }
 
 func usage(s string) error {

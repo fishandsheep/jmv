@@ -14,6 +14,7 @@ import (
 )
 
 func TestInstallActivateCurrentAndUninstall(t *testing.T) {
+	disableProfileMutation(t)
 	originalPrompt := installPromptIn
 	installPromptIn = strings.NewReader("\n")
 	t.Cleanup(func() { installPromptIn = originalPrompt })
@@ -84,6 +85,7 @@ func TestInstallActivateCurrentAndUninstall(t *testing.T) {
 }
 
 func TestInstallShowsInstalledAndUseSetsSessionOverride(t *testing.T) {
+	disableProfileMutation(t)
 	originalPrompt := installPromptIn
 	installPromptIn = strings.NewReader("\n")
 	t.Cleanup(func() { installPromptIn = originalPrompt })
@@ -152,6 +154,7 @@ func TestInstallShowsInstalledAndUseSetsSessionOverride(t *testing.T) {
 }
 
 func TestInstallPromptCanKeepExistingDefault(t *testing.T) {
+	disableProfileMutation(t)
 	archive := tinyJDKArchive(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
@@ -191,6 +194,47 @@ func TestInstallPromptCanKeepExistingDefault(t *testing.T) {
 	}
 	if cur.Major != "17" {
 		t.Fatalf("expected to keep existing default 17, got %#v", cur)
+	}
+}
+
+func TestInstallPromptEOFKeepsExistingDefault(t *testing.T) {
+	disableProfileMutation(t)
+	archive := tinyJDKArchive(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<a href="OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz">jdk</a>`))
+	})
+	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz", func(w http.ResponseWriter, r *http.Request) {
+		w.Write(archive)
+	})
+	mux.HandleFunc("/Adoptium/21/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<a href="OpenJDK21U-jdk_x64_linux_hotspot_21.0.7_6.tar.gz">jdk</a>`))
+	})
+	mux.HandleFunc("/Adoptium/21/jdk/x64/linux/OpenJDK21U-jdk_x64_linux_hotspot_21.0.7_6.tar.gz", func(w http.ResponseWriter, r *http.Request) {
+		w.Write(archive)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	home := t.TempDir()
+	cfg := Config{Home: home, Mirror: server.URL + "/Adoptium"}
+	originalPrompt := installPromptIn
+	installPromptIn = strings.NewReader("")
+	t.Cleanup(func() { installPromptIn = originalPrompt })
+
+	var out bytes.Buffer
+	if err := install(context.Background(), cfg, RuntimeJDK, "17", &out); err != nil {
+		t.Fatal(err)
+	}
+	if err := install(context.Background(), cfg, RuntimeJDK, "21", &out); err != nil {
+		t.Fatal(err)
+	}
+	cur, err := readCurrent(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cur.Major != "17" {
+		t.Fatalf("expected EOF prompt to keep existing default 17, got %#v", cur)
 	}
 }
 

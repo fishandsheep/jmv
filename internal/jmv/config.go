@@ -7,8 +7,9 @@ import (
 )
 
 type Config struct {
-	Home   string
-	Mirror string
+	Home        string
+	Mirror      string
+	MavenMirror string
 }
 
 func LoadConfig() (Config, error) {
@@ -26,7 +27,12 @@ func LoadConfig() (Config, error) {
 		mirror = DefaultMirror
 	}
 
-	return Config{Home: home, Mirror: trimSlash(mirror)}, nil
+	mavenMirror := os.Getenv("JMV_MAVEN_MIRROR")
+	if mavenMirror == "" {
+		mavenMirror = DefaultMavenMirror
+	}
+
+	return Config{Home: home, Mirror: trimSlash(mirror), MavenMirror: trimSlash(mavenMirror)}, nil
 }
 
 func DetectPlatform() (Platform, error) {

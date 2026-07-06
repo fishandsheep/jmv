@@ -3,6 +3,8 @@ package jmv
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,6 +33,7 @@ func install(ctx context.Context, cfg Config, rt Runtime, major string, out io.W
 	if _, err := os.Stat(dest); err == nil {
 		fmt.Fprintf(out, "%s %s already installed at %s\n", rt, major, dest)
 		fmt.Fprintln(out, "Run `jmv default` to switch shims to this runtime.")
+		configureShellEnvironment(cfg, out)
 		return nil
 	}
 
@@ -39,6 +42,10 @@ func install(ctx context.Context, cfg Config, rt Runtime, major string, out io.W
 
 	archivePath := filepath.Join(downloadsDir(cfg.Home), release.FileName)
 	if err := download(ctx, release.URL, archivePath, out); err != nil {
+		return err
+	}
+	if err := verifyArchiveChecksum(ctx, release, archivePath, out); err != nil {
+		_ = os.Remove(archivePath)
 		return err
 	}
 
@@ -92,18 +99,92 @@ func maybeConfigureDefaultAfterInstall(cfg Config, rt Runtime, major string, out
 	}
 
 	fmt.Fprintf(out, "Keeping existing default. Run `jmv default --runtime %s %s` to switch later.\n", rt, major)
+	configureShellEnvironment(cfg, out)
 	return nil
 }
 
 func shouldSetDefault(out io.Writer) bool {
-	fmt.Fprint(out, "Set this version as default now? (Y/n, default: y): ")
+	if os.Getenv("JMV_SET_DEFAULT") == "1" {
+		return true
+	}
+	fmt.Fprint(out, "Set this version as default now? (y/N, default: n): ")
 	reader := bufio.NewReader(installPromptIn)
 	answer, err := reader.ReadString('\n')
 	if err != nil && err != io.EOF {
-		return true
+		return false
+	}
+	if err == io.EOF && answer == "" {
+		return false
 	}
 	answer = strings.ToLower(strings.TrimSpace(answer))
-	return answer == "" || answer == "y" || answer == "yes"
+	return answer == "y" || answer == "yes"
+}
+
+func verifyArchiveChecksum(ctx context.Context, release Release, archivePath string, out io.Writer) error {
+	sum := strings.TrimSpace(release.SHA256)
+	if sum == "" {
+		var err error
+		sum, err = downloadChecksum(ctx, release.URL+".sha256")
+		if err != nil {
+			return nil
+		}
+	}
+	if sum == "" {
+		return nil
+	}
+	actual, err := fileSHA256(archivePath)
+	if err != nil {
+		return err
+	}
+	if !strings.EqualFold(actual, sum) {
+		return errf("sha256 mismatch for %s", release.FileName)
+	}
+	fmt.Fprintln(out, "Verified sha256 checksum.")
+	return nil
+}
+
+func downloadChecksum(ctx context.Context, url string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	setRequestHeaders(req)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return "", errf("checksum not found")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", errf("GET %s returned %s", url, resp.Status)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return "", err
+	}
+	fields := strings.Fields(string(data))
+	if len(fields) == 0 {
+		return "", nil
+	}
+	if _, err := hex.DecodeString(fields[0]); err != nil || len(fields[0]) != sha256.Size*2 {
+		return "", nil
+	}
+	return fields[0], nil
+}
+
+func fileSHA256(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func download(ctx context.Context, url, path string, out io.Writer) error {
@@ -238,6 +319,7 @@ func activateDefault(cfg Config, rt Runtime, major string, out io.Writer) error 
 		return err
 	}
 	fmt.Fprintf(out, "Default %s set to %s (%s)\n", rt, major, meta.Home)
+	configureShellEnvironment(cfg, out)
 	return nil
 }
 

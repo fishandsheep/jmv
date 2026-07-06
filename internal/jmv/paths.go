@@ -32,6 +32,18 @@ func currentPath(home string) string {
 	return filepath.Join(home, "current.json")
 }
 
+func mavenCurrentPath(home string) string {
+	return filepath.Join(home, "maven-current.json")
+}
+
+func mavenConfigDir(home string) string {
+	return filepath.Join(home, "config", "maven")
+}
+
+func mavenSettingsPath(home string) string {
+	return filepath.Join(mavenConfigDir(home), "settings.xml")
+}
+
 func downloadsDir(home string) string {
 	return filepath.Join(home, "downloads")
 }
