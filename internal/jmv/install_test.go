@@ -39,7 +39,7 @@ func TestInstallActivateCurrentAndUninstall(t *testing.T) {
 	if !strings.Contains(out.String(), wantURL) {
 		t.Fatalf("missing download URL in output:\n%s", out.String())
 	}
-	javaPath := filepath.Join(home, "installs", "jdk", "17", "bin", "java")
+	javaPath := filepath.Join(home, "installs", "jdk", "17", "bin", executableName("java"))
 	if _, err := os.Stat(javaPath); err != nil {
 		t.Fatalf("expected extracted java at %s: %v", javaPath, err)
 	}
@@ -63,7 +63,7 @@ func TestInstallActivateCurrentAndUninstall(t *testing.T) {
 	if cur.Runtime != RuntimeJDK || cur.Major != "17" {
 		t.Fatalf("unexpected current: %#v", cur)
 	}
-	if _, err := os.Stat(filepath.Join(home, "shims", "java")); err != nil {
+	if _, err := os.Stat(shimPath(home, "java")); err != nil {
 		t.Fatalf("expected java shim: %v", err)
 	}
 

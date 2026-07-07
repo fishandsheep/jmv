@@ -54,9 +54,8 @@ func writeShimsForBin(dir, binDir, okmExe, home string) error {
 		if !isExecutable(info) {
 			continue
 		}
-		name := entry.Name()
+		name := commandName(entry.Name())
 		if runtime.GOOS == "windows" {
-			name = strings.TrimSuffix(name, ".exe")
 			script := "@echo off\r\nset \"JMV_HOME=" + home + "\"\r\n\"" + okmExe + "\" shim " + name + " %*\r\n"
 			if err := os.WriteFile(filepath.Join(dir, name+".cmd"), []byte(script), 0o755); err != nil {
 				return err
@@ -92,16 +91,29 @@ func clearShimFiles(dir string) error {
 
 func isExecutable(info fs.FileInfo) bool {
 	if runtime.GOOS == "windows" {
-		return strings.HasSuffix(strings.ToLower(info.Name()), ".exe")
+		return commandName(info.Name()) != info.Name()
 	}
 	return info.Mode()&0o111 != 0
 }
 
+func commandName(name string) string {
+	if runtime.GOOS != "windows" {
+		return name
+	}
+	lower := strings.ToLower(name)
+	for _, ext := range []string{".exe", ".cmd", ".bat"} {
+		if strings.HasSuffix(lower, ext) {
+			return strings.TrimSuffix(name, name[len(name)-len(ext):])
+		}
+	}
+	return name
+}
+
 func runShim(home string, exe string, args []string) error {
 	for _, cur := range activeHomes(home, os.Getppid()) {
-		target := filepath.Join(cur.Home, "bin", exe)
-		if runtime.GOOS == "windows" && !strings.HasSuffix(strings.ToLower(target), ".exe") {
-			target += ".exe"
+		target, ok := resolveExecutable(filepath.Join(cur.Home, "bin", exe))
+		if !ok {
+			continue
 		}
 		if _, err := os.Stat(target); err != nil {
 			continue
@@ -116,6 +128,28 @@ func runShim(home string, exe string, args []string) error {
 		return cmd.Run()
 	}
 	return errf("no active runtime provides %s", exe)
+}
+
+func resolveExecutable(base string) (string, bool) {
+	if runtime.GOOS != "windows" {
+		if _, err := os.Stat(base); err == nil {
+			return base, true
+		}
+		return "", false
+	}
+	if commandName(base) != base {
+		if _, err := os.Stat(base); err == nil {
+			return base, true
+		}
+		return "", false
+	}
+	for _, ext := range []string{".exe", ".cmd", ".bat"} {
+		target := base + ext
+		if _, err := os.Stat(target); err == nil {
+			return target, true
+		}
+	}
+	return "", false
 }
 
 func activeHomes(home string, sessionPID int) []Current {

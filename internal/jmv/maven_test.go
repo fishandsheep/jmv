@@ -50,13 +50,13 @@ func TestMavenInstallSettingsAndShimCoexist(t *testing.T) {
 	if !strings.Contains(string(settings), "https://maven.aliyun.com/repository/public") || !strings.Contains(string(settings), "<mirrorOf>*</mirrorOf>") {
 		t.Fatalf("settings.xml missing Aliyun mirror:\n%s", string(settings))
 	}
-	if _, err := os.Stat(filepath.Join(home, "shims", "java")); err != nil {
+	if _, err := os.Stat(shimPath(home, "java")); err != nil {
 		t.Fatalf("expected java shim: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(home, "shims", "mvn")); err != nil {
+	if _, err := os.Stat(shimPath(home, "mvn")); err != nil {
 		t.Fatalf("expected mvn shim: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(home, "shims", "mvnDebug")); err != nil {
+	if _, err := os.Stat(shimPath(home, "mvnDebug")); err != nil {
 		t.Fatalf("expected mvnDebug shim: %v", err)
 	}
 	cur, err := readMavenCurrent(home)
@@ -113,14 +113,19 @@ func tinyMavenZip(t *testing.T) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
-	h := &zip.FileHeader{Name: "apache-maven-3.9.11/bin/mvn.cmd", Method: zip.Deflate}
-	h.SetMode(0o755)
-	w, err := zw.CreateHeader(h)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := w.Write([]byte("@echo off\r\n")); err != nil {
-		t.Fatal(err)
+	for _, name := range []string{
+		"apache-maven-3.9.11/bin/mvn.cmd",
+		"apache-maven-3.9.11/bin/mvnDebug.cmd",
+	} {
+		h := &zip.FileHeader{Name: name, Method: zip.Deflate}
+		h.SetMode(0o755)
+		w, err := zw.CreateHeader(h)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte("@echo off\r\n")); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err := zw.Close(); err != nil {
 		t.Fatal(err)

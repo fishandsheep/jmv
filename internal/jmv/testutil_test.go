@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"runtime"
 	"testing"
 )
@@ -80,6 +81,20 @@ func mavenAsset(version string) string {
 	return fmt.Sprintf("apache-maven-%s-bin%s", version, ext)
 }
 
+func executableName(name string) string {
+	if runtime.GOOS == "windows" {
+		return name + ".exe"
+	}
+	return name
+}
+
+func shimPath(home, name string) string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join(home, "shims", name+".cmd")
+	}
+	return filepath.Join(home, "shims", name)
+}
+
 // tinyJDKZip mirrors tinyJDKArchive but produces a zip archive. Used on
 // Windows runners where DetectPlatform() reports Ext=".zip".
 func tinyJDKZip(t *testing.T) []byte {
@@ -87,8 +102,8 @@ func tinyJDKZip(t *testing.T) []byte {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	files := map[string]string{
-		"jdk-17/bin/java":  "#!/usr/bin/env sh\n",
-		"jdk-17/bin/javac": "#!/usr/bin/env sh\n",
+		"jdk-17/bin/java.exe":  "@echo off\r\n",
+		"jdk-17/bin/javac.exe": "@echo off\r\n",
 	}
 	for name, content := range files {
 		h := &zip.FileHeader{Name: name, Method: zip.Deflate}

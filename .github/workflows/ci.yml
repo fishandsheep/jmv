@@ -20,9 +20,6 @@ jobs:
           - ubuntu-latest
           - macos-13
           - windows-latest
-    defaults:
-      run:
-        shell: bash
 
     steps:
       - name: Checkout
@@ -36,11 +33,24 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Check formatting
+      - name: Check formatting (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
         run: test -z "$(gofmt -l .)"
+
+      - name: Check formatting (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $files = gofmt -l .
+          if ($files) {
+            $files | ForEach-Object { Write-Host $_ }
+            exit 1
+          }
 
       - name: Check installer syntax
         if: runner.os != 'Windows'
+        shell: bash
         run: sh -n install.sh
 
       - name: Run tests
@@ -51,7 +61,9 @@ jobs:
 
       - name: Cross-build supported targets
         if: runner.os == 'Linux'
+        shell: bash
         run: |
+          mkdir -p dist
           for pair in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
             os="${pair%%/*}"
             arch="${pair##*/}"
