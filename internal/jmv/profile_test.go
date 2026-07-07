@@ -52,6 +52,9 @@ func TestMavenDefaultConfiguresBashProfileForMvnLookup(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		return
 	}
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skipf("bash not available: %v", err)
+	}
 	cmd := exec.Command("bash", "-lc", "source ~/.bashrc && command -v mvn")
 	cmd.Env = append(os.Environ(), "HOME="+homeDir)
 	found, err := cmd.Output()
@@ -59,7 +62,7 @@ func TestMavenDefaultConfiguresBashProfileForMvnLookup(t *testing.T) {
 		t.Fatalf("mvn not found after sourcing bashrc: %v", err)
 	}
 	want := filepath.Join(jmvHome, "shims", "mvn")
-	if strings.TrimSpace(string(found)) != want {
+	if !samePath(strings.TrimSpace(string(found)), want) {
 		t.Fatalf("expected %s, got %s", want, strings.TrimSpace(string(found)))
 	}
 }
@@ -103,6 +106,9 @@ func TestJDKDefaultConfiguresJavaHomeWhenMissing(t *testing.T) {
 
 	if runtime.GOOS == "windows" {
 		return
+	}
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skipf("bash not available: %v", err)
 	}
 	cmd := exec.Command("bash", "-lc", "source ~/.bashrc && printf '%s' \"$JAVA_HOME\"")
 	cmd.Env = append(os.Environ(), "HOME="+homeDir)
