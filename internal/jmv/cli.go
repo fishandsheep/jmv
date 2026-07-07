@@ -196,11 +196,36 @@ func reportJavaHomeStatus(jdkHome string, out io.Writer) {
 	switch {
 	case actual == "":
 		fmt.Fprintln(out, "Hint: JAVA_HOME is not set in this shell. Run `source ~/.bashrc` or `jmv env print` to enable it for tools that need it.")
-	case filepath.Clean(actual) == filepath.Clean(jdkHome):
+	case samePath(actual, jdkHome):
 		// already aligned, stay quiet
 	default:
 		fmt.Fprintf(out, "Warning: JAVA_HOME=%s does not match this runtime's home (%s). Reload your shell profile or run `jmv env print`.\n", actual, jdkHome)
 	}
+}
+
+// samePath returns true when a and b refer to the same directory on disk,
+// resolving symlinks so platform differences (notably macOS /var vs
+// /private/var) do not produce false mismatches.
+//
+// Fallback constraint: when a (or b) does not exist or has a broken symlink,
+// EvalSymlinks fails and we treat the unresolved path as its literal value
+// for the comparison. This means two non-existent paths that happen to be
+// lexically different will correctly return false, and two non-existent paths
+// that share their lexical form will be considered equal — callers that want
+// "must exist" semantics should pre-validate both paths.
+func samePath(a, b string) bool {
+	if filepath.Clean(a) == filepath.Clean(b) {
+		return true
+	}
+	aReal, errA := filepath.EvalSymlinks(a)
+	if errA != nil {
+		aReal = a
+	}
+	bReal, errB := filepath.EvalSymlinks(b)
+	if errB != nil {
+		bReal = b
+	}
+	return filepath.Clean(aReal) == filepath.Clean(bReal)
 }
 
 func envCommand(cfg Config, args []string, out io.Writer) error {
