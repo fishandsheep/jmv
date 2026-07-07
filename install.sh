@@ -112,12 +112,30 @@ download() {
 configure_shell() {
 	shell_name="$(basename "${SHELL:-}")"
 
+	# Try to resolve the active JDK home so we can write JAVA_HOME alongside JMV_HOME.
+	# Falls back quietly when jvm hasn't been used yet (no default runtime).
+	java_home_path=""
+	if [ -x "$install_dir/jvm" ]; then
+		java_home_path="$(JMV_HOME="$jmv_home" "$install_dir/jvm" env java-home 2>/dev/null)" || java_home_path=""
+	fi
+
+	if [ -n "$jmv_home" ] && [ -n "$java_home_path" ] && [ "${java_home_path#"$jmv_home/installs/"}" != "$java_home_path" ]; then
+		# Escape \ $ " ` so the line below is safe when the user's shell
+		# later evaluates the profile. Matches Go's shellConfigBlock style.
+		path_escaped=$(printf '%s' "$java_home_path" | sed 's/[\\"$`]/\\&/g')
+		java_home_export_line="export JAVA_HOME=\"$path_escaped\""
+		java_home_fish_line="set -gx JAVA_HOME \"$path_escaped\""
+	else
+		java_home_export_line=""
+		java_home_fish_line=""
+	fi
+
 	config_block='
 # jmv configuration
 export JMV_HOME="'"$jmv_home"'"
 export JMV_MIRROR="'"$mirror"'"
 export JMV_MAVEN_MIRROR="'"$maven_mirror"'"
-export PATH="'"$install_dir"':$JMV_HOME/shims:$PATH"
+'"$java_home_export_line"'export PATH="'"$install_dir"':$JMV_HOME/shims:$PATH"
 rm -rf "$JMV_HOME/sessions"'
 
 	fish_block='
@@ -125,7 +143,7 @@ rm -rf "$JMV_HOME/sessions"'
 set -gx JMV_HOME "'"$jmv_home"'"
 set -gx JMV_MIRROR "'"$mirror"'"
 set -gx JMV_MAVEN_MIRROR "'"$maven_mirror"'"
-fish_add_path "'"$install_dir"'"
+'"$java_home_fish_line"'fish_add_path "'"$install_dir"'"
 fish_add_path "'"$jmv_home"'/shims"
 rm -rf "$JMV_HOME/sessions"'
 
@@ -193,6 +211,8 @@ export JMV_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/Adoptium"
 export JMV_MAVEN_MIRROR="https://mirrors.aliyun.com/apache/maven"
 export PATH="$HOME/.local/bin:$JMV_HOME/shims:$PATH"
 rm -rf "$JMV_HOME/sessions"
+# After you install a JDK, also add (replace the path if needed):
+# export JAVA_HOME="$HOME/.jmv/installs/jdk/17"
 
 # Fish (append to ~/.config/fish/config.fish):
 set -gx JMV_HOME "$HOME/.jmv"
@@ -201,7 +221,10 @@ set -gx JMV_MAVEN_MIRROR "https://mirrors.aliyun.com/apache/maven"
 fish_add_path "$HOME/.local/bin"
 fish_add_path "$JMV_HOME/shims"
 rm -rf "$JMV_HOME/sessions"
+# After you install a JDK, also add (replace the path if needed):
+# set -gx JAVA_HOME "$HOME/.jmv/installs/jdk/17"
 EOF
+	printf '\nTip: run `jmv env print` any time to get the exact block tailored to your default JDK.\n'
 }
 
 need uname

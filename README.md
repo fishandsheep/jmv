@@ -98,7 +98,8 @@ jmv list
   uninstall or rm             [-r|--runtime jdk|jre] <major>
   use       or u              [-r|--runtime jdk|jre] <major>
   default   or d              [-r|--runtime jdk|jre] <major>
-  current   or c
+  current   or c              [--home]
+  env                         <print|java-home> [--shell bash|zsh|fish]
   maven                      <list|install|uninstall|use|default|current|config>
   version   or v
   help      or h
@@ -131,6 +132,21 @@ source ~/.config/fish/config.fish
 
 If your shell cannot be detected or profile update is disabled with `JMV_NO_MODIFY_PROFILE=1`, `jmv`
 prints the bash, zsh, and fish configuration blocks to add manually.
+
+### Diagnosing the current environment
+
+```bash
+jmv current                 # show the active runtime, its home, metadata, and JAVA_HOME status
+jmv current --home          # print just the home path of the active runtime (for scripts)
+jmv env print               # print the bash/zsh/fish profile block(s) jmv would write
+jmv env print --shell bash  # print the bash-only block
+jmv env print bash          # same as above
+jmv env java-home           # print just the default JDK home, or nothing if there is no JDK default
+```
+
+`jmv current` reports whether `JAVA_HOME` matches the active JDK. When it does not, reload the
+profile (`source ~/.bashrc`) or use `jmv env print` to grab the correct block for the current
+default.
 
 ### Maven
 

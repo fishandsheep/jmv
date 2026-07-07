@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 )
 
@@ -76,10 +77,17 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		}
 		return activateUse(cfg, rt, rest[0], out)
 	case "current", "c":
-		if len(args) != 0 {
-			return usage("jmv current")
+		homeOnly := false
+		for _, a := range args {
+			if a == "--home" {
+				homeOnly = true
+				continue
+			}
+			return usage("jmv current [--home]")
 		}
-		return showCurrent(cfg, out)
+		return showCurrent(cfg, out, homeOnly)
+	case "env":
+		return envCommand(cfg, args, out)
 	case "maven", "mvn":
 		return runMaven(ctx, cfg, args, out)
 	case "shim":
@@ -150,15 +158,22 @@ func list(ctx context.Context, cfg Config, rt Runtime, out io.Writer) error {
 	return nil
 }
 
-func showCurrent(cfg Config, out io.Writer) error {
+func showCurrent(cfg Config, out io.Writer, homeOnly bool) error {
 	pid := os.Getppid()
 	cur, err := resolveCurrent(cfg.Home, pid)
 	if err != nil {
 		if os.IsNotExist(err) {
+			if homeOnly {
+				return errf("no active runtime")
+			}
 			fmt.Fprintln(out, "No active Java version.")
 			return nil
 		}
 		return err
+	}
+	if homeOnly {
+		fmt.Fprintln(out, cur.Home)
+		return nil
 	}
 	if currentFromSession(cfg.Home, pid) {
 		fmt.Fprintf(out, "%s %s (session)\n", cur.Runtime, cur.Major)
@@ -170,7 +185,103 @@ func showCurrent(cfg Config, out io.Writer) error {
 	if err == nil {
 		fmt.Fprintf(out, "Download URL: %s\n", meta.URL)
 	}
+	if cur.Runtime == RuntimeJDK {
+		reportJavaHomeStatus(cur.Home, out)
+	}
 	return nil
+}
+
+func reportJavaHomeStatus(jdkHome string, out io.Writer) {
+	actual := os.Getenv("JAVA_HOME")
+	switch {
+	case actual == "":
+		fmt.Fprintln(out, "Hint: JAVA_HOME is not set in this shell. Run `source ~/.bashrc` or `jmv env print` to enable it for tools that need it.")
+	case filepath.Clean(actual) == filepath.Clean(jdkHome):
+		// already aligned, stay quiet
+	default:
+		fmt.Fprintf(out, "Warning: JAVA_HOME=%s does not match this runtime's home (%s). Reload your shell profile or run `jmv env print`.\n", actual, jdkHome)
+	}
+}
+
+func envCommand(cfg Config, args []string, out io.Writer) error {
+	if len(args) == 0 {
+		printManualShellConfig(cfg, out)
+		return nil
+	}
+	switch args[0] {
+	case "print":
+		return envPrint(cfg, args[1:], out)
+	case "java-home":
+		return envJavaHome(cfg, out)
+	default:
+		return usage("jmv env <print|java-home> [...]")
+	}
+}
+
+func envJavaHome(cfg Config, out io.Writer) error {
+	cur, err := readCurrent(cfg.Home)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if cur.Runtime != RuntimeJDK {
+		return nil
+	}
+	fmt.Fprintln(out, cur.Home)
+	return nil
+}
+
+func envPrint(cfg Config, args []string, out io.Writer) error {
+	rest := args
+	javaHome := profileJavaHome(cfg)
+	var shells []string
+	for i := 0; i < len(rest); i++ {
+		switch rest[i] {
+		case "--shell", "-s":
+			if i+1 >= len(rest) {
+				return usage("jmv env print [--shell bash|zsh|fish]")
+			}
+			name, err := normalizeShellName(rest[i+1])
+			if err != nil {
+				return usage("jmv env print [--shell bash|zsh|fish]")
+			}
+			shells = append(shells, name)
+			i++
+		default:
+			name, err := normalizeShellName(rest[i])
+			if err != nil {
+				return usage("jmv env print [--shell bash|zsh|fish]")
+			}
+			shells = append(shells, name)
+		}
+	}
+	if len(shells) == 0 {
+		printManualShellConfig(cfg, out)
+		return nil
+	}
+	for idx, name := range shells {
+		if idx > 0 {
+			fmt.Fprintln(out)
+		}
+		fmt.Fprintf(out, "# %s\n", name)
+		fmt.Fprint(out, shellConfigBlock(cfg, name, javaHome))
+	}
+	return nil
+}
+
+func normalizeShellName(s string) (string, error) {
+	switch s {
+	case "bash":
+		return "bash", nil
+	case "zsh":
+		return "zsh", nil
+	case "fish":
+		return "fish", nil
+	default:
+		return "", errf("shell must be bash, zsh, or fish")
+	}
 }
 
 func currentFromSession(home string, pid int) bool {
@@ -253,8 +364,9 @@ Commands:
   uninstall or rm             [-r|--runtime jdk|jre] <major>
   use       or u              [-r|--runtime jdk|jre] <major>
   default   or d              [-r|--runtime jdk|jre] <major>
-  current   or c
-  maven                       <list|install|uninstall|use|default|current|config>
+  current   or c              [--home]
+  env                         [print] [--shell bash|zsh|fish]
+  maven                        <list|install|uninstall|use|default|current|config>
   version   or v
   help      or h
 
@@ -272,6 +384,10 @@ Examples:
   jmv install --runtime jre 17
   jmv default 17
   jmv use 17
+  jmv env
+  jmv env print --shell bash
+  jmv env java-home
+  jmv current --home
   jmv maven install latest
   jmv maven default 3.9.11`)
 }
