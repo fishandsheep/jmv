@@ -17,8 +17,8 @@ import (
 
 func TestMavenInstallSettingsAndShimCoexist(t *testing.T) {
 	disableProfileMutation(t)
-	mavenArchive := tinyMavenArchive(t)
-	javaArchive := tinyJDKArchive(t)
+	mavenArchive := pickMavenArchive(t)
+	javaArchive := pickJDKArchive(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/apache/maven/maven-3/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<a href="3.9.10/">3.9.10/</a><a href="3.9.11/">3.9.11/</a>`))
@@ -26,15 +26,10 @@ func TestMavenInstallSettingsAndShimCoexist(t *testing.T) {
 	mux.HandleFunc("/apache/maven/maven-3/3.9.11/binaries/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`ok`))
 	})
-	mux.HandleFunc("/apache/maven/maven-3/3.9.11/binaries/apache-maven-3.9.11-bin.tar.gz", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/apache/maven/maven-3/3.9.11/binaries/"+mavenAsset("3.9.11"), func(w http.ResponseWriter, r *http.Request) {
 		w.Write(mavenArchive)
 	})
-	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<a href="OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz">jdk</a>`))
-	})
-	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(javaArchive)
-	})
+	adoptiumMock(t, mux, "17", "17.0.19_10", javaArchive)
 	server := httptest.NewServer(mux)
 	defer server.Close()
 

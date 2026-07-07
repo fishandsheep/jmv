@@ -13,20 +13,10 @@ import (
 
 func TestUseVsDefaultDifferentBehavior(t *testing.T) {
 	disableProfileMutation(t)
-	archive := tinyJDKArchive(t)
+	archive := pickJDKArchive(t)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<a href="OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz">jdk</a>`))
-	})
-	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(archive)
-	})
-	mux.HandleFunc("/Adoptium/8/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<a href="OpenJDK8U-jdk_x64_linux_hotspot_8.0.432_6.tar.gz">jdk</a>`))
-	})
-	mux.HandleFunc("/Adoptium/8/jdk/x64/linux/OpenJDK8U-jdk_x64_linux_hotspot_8.0.432_6.tar.gz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(archive)
-	})
+	adoptiumMock(t, mux, "17", "17.0.19_10", archive)
+	adoptiumMock(t, mux, "8", "8.0.432_6", archive)
 	server := httptest.NewServer(mux)
 	defer server.Close()
 

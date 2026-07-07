@@ -19,18 +19,9 @@ func TestInstallActivateCurrentAndUninstall(t *testing.T) {
 	installPromptIn = strings.NewReader("\n")
 	t.Cleanup(func() { installPromptIn = originalPrompt })
 
-	archive := tinyJDKArchive(t)
+	archive := pickJDKArchive(t)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<a href="OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz">jdk</a>`))
-	})
-	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz", func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("User-Agent") != userAgent || r.Header.Get("Accept") != "*/*" {
-			http.Error(w, "forbidden", http.StatusForbidden)
-			return
-		}
-		w.Write(archive)
-	})
+	adoptiumMockStrict(t, mux, "17", "17.0.19_10", archive)
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -44,7 +35,8 @@ func TestInstallActivateCurrentAndUninstall(t *testing.T) {
 	if err := install(context.Background(), cfg, RuntimeJDK, "17", &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "Download URL: "+server.URL+"/Adoptium/17/jdk/x64/linux/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz") {
+	wantURL := "Download URL: " + server.URL + adoptiumIndexPath("17") + adoptiumAsset("17", "17.0.19_10")
+	if !strings.Contains(out.String(), wantURL) {
 		t.Fatalf("missing download URL in output:\n%s", out.String())
 	}
 	javaPath := filepath.Join(home, "installs", "jdk", "17", "bin", "java")
@@ -89,14 +81,9 @@ func TestInstallShowsInstalledAndUseSetsSessionOverride(t *testing.T) {
 	originalPrompt := installPromptIn
 	installPromptIn = strings.NewReader("\n")
 	t.Cleanup(func() { installPromptIn = originalPrompt })
-	archive := tinyJDKArchive(t)
+	archive := pickJDKArchive(t)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<a href="OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz">jdk</a>`))
-	})
-	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(archive)
-	})
+	adoptiumMock(t, mux, "17", "17.0.19_10", archive)
 	mux.HandleFunc("/Adoptium/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<a href="17/">17/</a>`))
 	})
@@ -113,7 +100,8 @@ func TestInstallShowsInstalledAndUseSetsSessionOverride(t *testing.T) {
 	if !strings.Contains(out.String(), "[1/3] Downloading archive") || !strings.Contains(out.String(), "[2/3] Extracting archive") || !strings.Contains(out.String(), "[3/3] Finalizing configuration") {
 		t.Fatalf("missing progress output: %s", out.String())
 	}
-	if _, err := os.Stat(filepath.Join(home, "downloads", "OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz")); !os.IsNotExist(err) {
+	wantArchive := filepath.Join("downloads", adoptiumAsset("17", "17.0.19_10"))
+	if _, err := os.Stat(filepath.Join(home, wantArchive)); !os.IsNotExist(err) {
 		t.Fatalf("archive should be cleaned up, err=%v", err)
 	}
 
@@ -155,20 +143,10 @@ func TestInstallShowsInstalledAndUseSetsSessionOverride(t *testing.T) {
 
 func TestInstallPromptCanKeepExistingDefault(t *testing.T) {
 	disableProfileMutation(t)
-	archive := tinyJDKArchive(t)
+	archive := pickJDKArchive(t)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<a href="OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz">jdk</a>`))
-	})
-	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(archive)
-	})
-	mux.HandleFunc("/Adoptium/8/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<a href="OpenJDK8U-jdk_x64_linux_hotspot_8.0.432_6.tar.gz">jdk</a>`))
-	})
-	mux.HandleFunc("/Adoptium/8/jdk/x64/linux/OpenJDK8U-jdk_x64_linux_hotspot_8.0.432_6.tar.gz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(archive)
-	})
+	adoptiumMock(t, mux, "17", "17.0.19_10", archive)
+	adoptiumMock(t, mux, "8", "8.0.432_6", archive)
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -199,20 +177,10 @@ func TestInstallPromptCanKeepExistingDefault(t *testing.T) {
 
 func TestInstallPromptEOFKeepsExistingDefault(t *testing.T) {
 	disableProfileMutation(t)
-	archive := tinyJDKArchive(t)
+	archive := pickJDKArchive(t)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<a href="OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz">jdk</a>`))
-	})
-	mux.HandleFunc("/Adoptium/17/jdk/x64/linux/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(archive)
-	})
-	mux.HandleFunc("/Adoptium/21/jdk/x64/linux/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<a href="OpenJDK21U-jdk_x64_linux_hotspot_21.0.7_6.tar.gz">jdk</a>`))
-	})
-	mux.HandleFunc("/Adoptium/21/jdk/x64/linux/OpenJDK21U-jdk_x64_linux_hotspot_21.0.7_6.tar.gz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(archive)
-	})
+	adoptiumMock(t, mux, "17", "17.0.19_10", archive)
+	adoptiumMock(t, mux, "21", "21.0.7_6", archive)
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
